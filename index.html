@@ -177,6 +177,86 @@ header {
 .track-item:hover .rm-btn { opacity: 1; }
 .rm-btn:hover { color: var(--acc2); }
 
+.sidebar-nav {
+  display: flex; gap: 4px; padding: 10px 10px 8px;
+  border-bottom: 1px solid var(--border);
+}
+.nav-tab {
+  flex: 1; background: none; border: 1px solid var(--border);
+  color: var(--muted); padding: 6px 4px;
+  border-radius: var(--r);
+  font-family: 'Space Mono', monospace;
+  font-size: .52rem; letter-spacing: .05em;
+  text-transform: uppercase; cursor: pointer; transition: all .15s;
+}
+.nav-tab:hover { border-color: var(--acc); color: var(--acc); }
+.nav-tab.active { background: #e8ff4712; border-color: var(--acc); color: var(--acc); }
+
+.sidebar-content { flex: 1; overflow: hidden; display: flex; flex-direction: column; }
+
+/* Library Tab */
+#libTab { display: none; }
+#libTab.show { display: flex; flex-direction: column; }
+
+.lib-list { flex: 1; overflow-y: auto; padding: 6px 0; scrollbar-width: thin; scrollbar-color: var(--border) transparent; }
+.lib-list::-webkit-scrollbar { width: 3px; }
+.lib-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+/* Playlist Tab */
+#playTab { display: none; flex-direction: column; }
+#playTab.show { display: flex; }
+
+.playlist-controls { padding: 10px 10px 8px; display: flex; gap: 6px; border-bottom: 1px solid var(--border); }
+.pl-new-btn, .pl-sync-btn {
+  flex: 1; background: none; border: 1px solid var(--border);
+  color: var(--muted); padding: 6px 4px;
+  border-radius: var(--r);
+  font-family: 'Space Mono', monospace;
+  font-size: .52rem; letter-spacing: .05em;
+  text-transform: uppercase; cursor: pointer; transition: all .15s;
+}
+.pl-new-btn:hover, .pl-sync-btn:hover { border-color: var(--acc); color: var(--acc); }
+
+.playlists-list { flex: 1; overflow-y: auto; padding: 6px 0; scrollbar-width: thin; scrollbar-color: var(--border) transparent; }
+.playlists-list::-webkit-scrollbar { width: 3px; }
+.playlists-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+.playlist-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 14px; cursor: pointer;
+  transition: background .12s;
+  border-left: 2px solid transparent;
+}
+.playlist-item:hover { background: var(--surf2); }
+.playlist-item.active { background: #e8ff4708; border-left-color: var(--acc); }
+.pl-icon { font-size: 1.1rem; flex-shrink: 0; }
+.pl-info { flex: 1; min-width: 0; }
+.pl-name { font-size: .7rem; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.playlist-item.active .pl-name { color: var(--acc); }
+.pl-count { font-size: .55rem; color: var(--muted); margin-top: 2px; }
+.pl-del-btn {
+  background: none; border: none;
+  color: var(--muted); font-size: .8rem;
+  padding: 4px 6px; cursor: pointer;
+  opacity: 0; transition: opacity .12s, color .12s;
+  flex-shrink: 0; min-width: 28px;
+}
+.playlist-item:hover .pl-del-btn { opacity: 1; }
+.pl-del-btn:hover { color: var(--acc2); }
+
+.spotify-login { padding: 20px 10px; text-align: center; }
+.sp-btn {
+  background: #1DB954; border: none;
+  color: white; padding: 8px 16px;
+  border-radius: var(--r);
+  font-family: 'Space Mono', monospace;
+  font-size: .62rem; font-weight: 700;
+  cursor: pointer; transition: opacity .15s;
+}
+.sp-btn:hover { opacity: .85; }
+
+.playlist-empty { padding: 20px 10px; text-align: center; color: var(--muted); font-size: .62rem; }
+
 .sidebar-footer {
   border-top: 1px solid var(--border);
   padding: 10px 12px; display: flex; gap: 6px;
@@ -457,19 +537,45 @@ input[type=range]::-moz-range-thumb {
       <span>Library</span>
       <button class="add-btn" id="addBtn">+ Add Files</button>
     </div>
-    <input type="file" id="fileInput" multiple accept="audio/*">
 
-    <div class="drop-zone" id="dropZone">
-      <span class="di">🎵</span>
-      <p><strong>Drop audio here</strong><br>or tap Add Files<br><span style="font-size:.54rem">MP3 · WAV · OGG · FLAC · M4A</span></p>
+    <!-- Navigation Tabs -->
+    <div class="sidebar-nav">
+      <button class="nav-tab active" id="libNavBtn">📁 Library</button>
+      <button class="nav-tab" id="playNavBtn">🎵 Playlists</button>
     </div>
 
-    <div class="empty-state show" id="emptyState">
-      <span class="ei">🎧</span>
-      No tracks yet.<br>Add some music<br>to get started.
+    <!-- Library Tab Content -->
+    <div class="sidebar-content" id="libTab">
+      <input type="file" id="fileInput" multiple accept="audio/*">
+
+      <div class="drop-zone" id="dropZone">
+        <span class="di">🎵</span>
+        <p><strong>Drop audio here</strong><br>or tap Add Files<br><span style="font-size:.54rem">MP3 · WAV · OGG · FLAC · M4A</span></p>
+      </div>
+
+      <div class="empty-state show" id="emptyState">
+        <span class="ei">🎧</span>
+        No tracks yet.<br>Add some music<br>to get started.
+      </div>
+
+      <div class="lib-list" id="playlist"></div>
     </div>
 
-    <div class="playlist" id="playlist"></div>
+    <!-- Playlist Tab Content -->
+    <div id="playTab">
+      <div class="playlist-controls">
+        <button class="pl-new-btn" id="newPlaylistBtn">+ New</button>
+        <button class="pl-sync-btn" id="syncSpotifyBtn">🔄 Sync Spotify</button>
+      </div>
+
+      <div class="spotify-login" id="spotifyLoginArea" style="display:none;">
+        <div style="font-size:.62rem; color:var(--muted); margin-bottom:10px;">Connect to Spotify to sync your playlists</div>
+        <button class="sp-btn" id="spotifyLoginBtn">LOGIN WITH SPOTIFY</button>
+      </div>
+
+      <div class="playlists-list" id="playlistsList"></div>
+      <div class="playlist-empty" id="playlistEmpty">No playlists yet.<br>Create or sync from Spotify.</div>
+    </div>
 
     <div class="sidebar-footer">
       <button class="sf-btn active" id="shuffleBtn">⇄ Shuffle</button>
@@ -546,8 +652,28 @@ input[type=range]::-moz-range-thumb {
 <audio id="audio"></audio>
 
 <script>
+/* ─── SPOTIFY CONFIGURATION ────────────────────────── */
+const SPOTIFY_CONFIG = {
+  clientId:     '8720c0f38c3c43f6b1715062b77da44c',      // Get from https://developer.spotify.com/dashboard
+  redirectUri:  'http://127.0.0.1:5500/index.html',
+  scopes:       'playlist-read-private playlist-read-collaborative',
+};
+
 /* ─── STATE ─────────────────────────────────────────── */
-const S = { tracks:[], cur:-1, shuffle:true, repeat:false, muted:false, playing:false, shOrder:[], shPos:0 };
+const S = { 
+  tracks: [], 
+  cur: -1, 
+  shuffle: true, 
+  repeat: false, 
+  muted: false, 
+  playing: false, 
+  shOrder: [], 
+  shPos: 0,
+  currentMode: 'library', // 'library' or 'playlist'
+  currentPlaylist: -1,
+  playlists: [],
+  spotifyToken: null,
+};
 
 /* ─── REFS ──────────────────────────────────────────── */
 const $ = id => document.getElementById(id);
@@ -588,6 +714,329 @@ const addBtn       = $('addBtn');
 const mobListBtn   = $('mobListBtn');
 const mobPlayerBtn = $('mobPlayerBtn');
 const mobAddBtn    = $('mobAddBtn');
+
+// Playlist refs
+const libNavBtn     = $('libNavBtn');
+const playNavBtn    = $('playNavBtn');
+const libTab        = $('libTab');
+const playTab       = $('playTab');
+const newPlaylistBtn = $('newPlaylistBtn');
+const syncSpotifyBtn = $('syncSpotifyBtn');
+const playlistsList = $('playlistsList');
+const playlistEmpty = $('playlistEmpty');
+const spotifyLoginArea = $('spotifyLoginArea');
+const spotifyLoginBtn  = $('spotifyLoginBtn');
+
+/* ─── STORAGE ─────────────────────────────────────── */
+function loadState() {
+  const saved = localStorage.getItem('vibePlaylists');
+  if (saved) {
+    try {
+      S.playlists = JSON.parse(saved);
+      S.spotifyToken = localStorage.getItem('spotifyToken');
+    } catch (e) { console.error('Failed to load state:', e); }
+  }
+}
+
+function saveState() {
+  localStorage.setItem('vibePlaylists', JSON.stringify(S.playlists));
+}
+
+/* ─── SPOTIFY AUTH ──────────────────────────────────– */
+function getSpotifyAuthUrl() {
+  const params = new URLSearchParams({
+    client_id: SPOTIFY_CONFIG.clientId,
+    response_type: 'code',
+    redirect_uri: SPOTIFY_CONFIG.redirectUri,
+    scope: SPOTIFY_CONFIG.scopes,
+  });
+  return `https://accounts.spotify.com/authorize?${params}`;
+}
+
+function handleSpotifyCallback() {
+  const hash = window.location.hash.substring(1);
+  if (!hash) return;
+  const params = new URLSearchParams(hash);
+  const token = params.get('access_token');
+  if (token) {
+    S.spotifyToken = token;
+    localStorage.setItem('spotifyToken', token);
+    window.location.hash = '';
+    updateSpotifyUI();
+    showToast('Spotify connected!');
+  }
+}
+
+function updateSpotifyUI() {
+  if (S.spotifyToken) {
+    spotifyLoginArea.style.display = 'none';
+  } else {
+    spotifyLoginArea.style.display = 'block';
+  }
+}
+
+/* ─── SPOTIFY API ───────────────────────────────────– */
+async function fetchSpotifyPlaylists() {
+  if (!S.spotifyToken) { showToast('Please login to Spotify first'); return; }
+  
+  statusText.textContent = 'Syncing...';
+  try {
+    const resp = await fetch('https://api.spotify.com/v1/me/playlists?limit=50', {
+      headers: { 'Authorization': `Bearer ${S.spotifyToken}` }
+    });
+    
+    if (!resp.ok) throw new Error('Spotify API error');
+    const data = await resp.json();
+    
+    for (const pl of data.items) {
+      const existing = S.playlists.find(p => p.spotifyId === pl.id);
+      if (!existing) {
+        S.playlists.push({
+          id: Date.now() + Math.random(),
+          name: pl.name,
+          spotifyId: pl.id,
+          tracks: [],
+          isSpotify: true,
+          lastSync: 0,
+        });
+      }
+    }
+    
+    saveState();
+    renderPlaylists();
+    showToast(`Synced ${data.items.length} playlists`);
+    statusText.textContent = 'Ready';
+  } catch (e) {
+    console.error('Spotify sync error:', e);
+    showToast('Failed to sync Spotify');
+    statusText.textContent = 'Ready';
+  }
+}
+
+async function fetchSpotifyPlaylistTracks(playlistId, spotifyId) {
+  if (!S.spotifyToken) return;
+  
+  try {
+    let allTracks = [];
+    let url = `https://api.spotify.com/v1/playlists/${spotifyId}/tracks?limit=50`;
+    
+    while (url) {
+      const resp = await fetch(url, {
+        headers: { 'Authorization': `Bearer ${S.spotifyToken}` }
+      });
+      if (!resp.ok) throw new Error('Failed to fetch tracks');
+      const data = await resp.json();
+      
+      allTracks = allTracks.concat(data.items.map(item => ({
+        id: item.track.id,
+        name: item.track.name,
+        artist: item.track.artists.map(a => a.name).join(', '),
+        album: item.track.album.name,
+        duration: item.track.duration_ms / 1000,
+        ext: 'SPOTIFY',
+        size: '—',
+        emoji: '🎵',
+        color: '#1DB954',
+        url: item.track.external_urls.spotify,
+        isSpotify: true,
+        previewUrl: item.track.preview_url,
+      })));
+      
+      url = data.next;
+    }
+    
+    const pl = S.playlists.find(p => p.id === playlistId);
+    if (pl) {
+      pl.tracks = allTracks;
+      pl.lastSync = Date.now();
+      saveState();
+      renderPlaylists();
+    }
+  } catch (e) {
+    console.error('Failed to fetch Spotify tracks:', e);
+    showToast('Error loading tracks from Spotify');
+  }
+}
+
+/* ─── PLAYLIST MANAGEMENT ──────────────────────────– */
+function createPlaylist() {
+  const name = prompt('Playlist name:');
+  if (!name) return;
+  
+  S.playlists.push({
+    id: Date.now() + Math.random(),
+    name: name,
+    tracks: [],
+    isSpotify: false,
+    lastSync: 0,
+  });
+  
+  saveState();
+  renderPlaylists();
+  showToast(`Created "${name}"`);
+}
+
+function deletePlaylist(id) {
+  if (!confirm('Delete this playlist?')) return;
+  S.playlists = S.playlists.filter(p => p.id !== id);
+  if (S.currentPlaylist === id) {
+    S.currentPlaylist = -1;
+    S.currentMode = 'library';
+    switchToLibrary();
+  }
+  saveState();
+  renderPlaylists();
+  showToast('Playlist deleted');
+}
+
+function switchToPlaylist(id) {
+  S.currentPlaylist = id;
+  S.currentMode = 'playlist';
+  S.cur = -1;
+  S.playing = false;
+  pauseAudio();
+  renderPlaylists();
+  renderPlaylistTracks();
+  closeDrawer();
+}
+
+function switchToLibrary() {
+  S.currentPlaylist = -1;
+  S.currentMode = 'library';
+  S.cur = -1;
+  S.playing = false;
+  pauseAudio();
+  renderPlaylist();
+  renderPlaylists();
+}
+
+function getCurrentTracks() {
+  if (S.currentMode === 'library') return S.tracks;
+  if (S.currentMode === 'playlist' && S.currentPlaylist >= 0) {
+    const pl = S.playlists.find(p => p.id === S.currentPlaylist);
+    return pl ? pl.tracks : [];
+  }
+  return [];
+}
+
+function renderPlaylists() {
+  playlistsList.innerHTML = '';
+  playlistEmpty.style.display = S.playlists.length ? 'none' : 'block';
+  
+  S.playlists.forEach(pl => {
+    const div = document.createElement('div');
+    div.className = 'playlist-item' + (S.currentPlaylist === pl.id ? ' active' : '');
+    div.innerHTML = `
+      <span class="pl-icon">${pl.isSpotify ? '🎧' : '📝'}</span>
+      <div class="pl-info">
+        <div class="pl-name">${esc(pl.name)}</div>
+        <div class="pl-count">${pl.tracks.length} track${pl.tracks.length !== 1 ? 's' : ''}</div>
+      </div>
+      ${!pl.isSpotify ? `<button class="pl-del-btn" data-id="${pl.id}">✕</button>` : ''}
+    `;
+    
+    div.addEventListener('click', e => {
+      if (e.target.classList.contains('pl-del-btn')) return;
+      switchToPlaylist(pl.id);
+    });
+    
+    const delBtn = div.querySelector('.pl-del-btn');
+    if (delBtn) {
+      delBtn.addEventListener('click', e => {
+        e.stopPropagation();
+        deletePlaylist(pl.id);
+      });
+    }
+    
+    playlistsList.appendChild(div);
+  });
+}
+
+function renderPlaylistTracks() {
+  const tracks = getCurrentTracks();
+  playlist.innerHTML = '';
+  emptyState.classList.toggle('show', tracks.length === 0);
+  
+  tracks.forEach((t, i) => {
+    const li = document.createElement('div');
+    li.className = 'track-item' + (i === S.cur ? ' active' : '');
+    li.dataset.index = i;
+    li.draggable = !t.isSpotify;
+    li.innerHTML = `
+      <span class="t-num">${i+1}</span>
+      <div class="play-icon ${S.playing && i===S.cur ? '' : 'paused'}">
+        <div class="bar" style="height:6px"></div>
+        <div class="bar" style="height:10px;margin:0 2px"></div>
+        <div class="bar" style="height:4px"></div>
+      </div>
+      <div class="t-info">
+        <div class="t-name">${esc(t.name)}</div>
+        <div class="t-meta">${t.isSpotify ? (t.artist || t.ext) : t.ext} · ${t.size}</div>
+      </div>
+      <span class="t-dur">${t.duration ? fmtTime(t.duration) : '—'}</span>
+      <button class="rm-btn" data-i="${i}" aria-label="Remove">✕</button>
+    `;
+    
+    li.addEventListener('click', e => {
+      if (e.target.classList.contains('rm-btn')) return;
+      loadTrack(i);
+      playAudio();
+      closeDrawer();
+    });
+    
+    li.querySelector('.rm-btn').addEventListener('click', e => {
+      e.stopPropagation();
+      removeTrackFromPlaylist(i);
+    });
+    
+    if (!t.isSpotify) {
+      li.addEventListener('dragstart', () => li.classList.add('dragging'));
+      li.addEventListener('dragend', () => {
+        li.classList.remove('dragging');
+        document.querySelectorAll('.drag-target').forEach(el => el.classList.remove('drag-target'));
+      });
+      li.addEventListener('dragover', e => { e.preventDefault(); li.classList.add('drag-target'); });
+      li.addEventListener('dragleave', () => li.classList.remove('drag-target'));
+      li.addEventListener('drop', e => {
+        e.preventDefault();
+        const from = parseInt(document.querySelector('.track-item.dragging')?.dataset?.index);
+        if (!isNaN(from) && from !== i) reorderPlaylistTrack(from, i);
+      });
+    }
+    
+    playlist.appendChild(li);
+  });
+}
+
+function removeTrackFromPlaylist(idx) {
+  const tracks = getCurrentTracks();
+  if (S.currentMode === 'library') {
+    removeTrack(idx);
+  } else if (S.currentMode === 'playlist') {
+    const pl = S.playlists.find(p => p.id === S.currentPlaylist);
+    if (pl && !pl.isSpotify) {
+      pl.tracks.splice(idx, 1);
+      if (S.cur === idx) {
+        audio.pause();
+        S.playing = false;
+        S.cur = -1;
+        resetUI();
+      } else if (S.cur > idx) S.cur--;
+      saveState();
+      renderPlaylistTracks();
+    }
+  }
+}
+
+function reorderPlaylistTrack(from, to) {
+  const pl = S.playlists.find(p => p.id === S.currentPlaylist);
+  if (pl) {
+    const m = pl.tracks.splice(from, 1)[0];
+    pl.tracks.splice(to, 0, m);
+    saveState();
+    renderPlaylistTracks();
+  }
+}
 
 /* ─── AUDIO CONTEXT ─────────────────────────────────── */
 let audioCtx, analyser, srcNode;
@@ -668,7 +1117,8 @@ const esc     = s => s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'
 
 /* ─── SHUFFLE ───────────────────────────────────────── */
 function buildShuffle() {
-  S.shOrder = [...Array(S.tracks.length).keys()];
+  const tracks = getCurrentTracks();
+  S.shOrder = [...Array(tracks.length).keys()];
   for (let i = S.shOrder.length-1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i+1));
     [S.shOrder[i],S.shOrder[j]] = [S.shOrder[j],S.shOrder[i]];
@@ -690,9 +1140,14 @@ function handleFiles(files) {
     emoji: emojis[Math.floor(Math.random()*emojis.length)],
     color: colors[Math.floor(Math.random()*colors.length)],
     duration: 0,
+    isSpotify: false,
   }));
-  buildShuffle(); renderPlaylist(); updateStats();
-  if (S.cur === -1) loadTrack(0);
+  buildShuffle();
+  if (S.currentMode === 'library') {
+    renderPlaylist();
+    updateStats();
+    if (S.cur === -1) loadTrack(0);
+  }
   showToast(`Added ${af.length} track${af.length>1?'s':''}`);
   closeDrawer();
 }
@@ -770,21 +1225,39 @@ function updateStats() {
 
 /* ─── PLAYBACK ──────────────────────────────────────── */
 function loadTrack(idx) {
-  if (idx < 0 || idx >= S.tracks.length) return;
+  const tracks = getCurrentTracks();
+  if (idx < 0 || idx >= tracks.length) return;
   S.cur = idx;
-  const t = S.tracks[idx];
-  audio.src = t.url; audio.load();
-  npTitle.textContent = t.name; npTitle.classList.remove('empty');
+  const t = tracks[idx];
+  
+  if (t.isSpotify && t.previewUrl) {
+    audio.src = t.previewUrl;
+  } else if (!t.isSpotify) {
+    audio.src = t.url;
+  } else {
+    showToast('Track preview not available');
+    return;
+  }
+  
+  audio.load();
+  npTitle.textContent = t.name;
+  npTitle.classList.remove('empty');
   npFmt.textContent   = t.ext;
-  npSz.textContent    = t.size;
+  npSz.textContent    = t.isSpotify ? (t.artist || '—') : t.size;
   albumEmoji.textContent    = t.emoji;
   albumArt.style.borderColor = t.color + '60';
   ambient.style.background   = t.color;
-  renderPlaylist(); updateStats();
+  
+  if (S.currentMode === 'library') {
+    renderPlaylist();
+  } else {
+    renderPlaylistTracks();
+  }
 }
 
 function playAudio() {
-  if (!S.tracks.length) return;
+  const tracks = getCurrentTracks();
+  if (!tracks.length) return;
   initCtx();
   if (audioCtx.state === 'suspended') audioCtx.resume();
   audio.volume = volSlider.value;
@@ -792,7 +1265,11 @@ function playAudio() {
     S.playing = true; playBtn.textContent = '⏸';
     albumArt.classList.add('spinning'); albumArt.classList.remove('paused-spin');
     statusText.textContent = 'Playing'; statusDot.classList.add('live');
-    renderPlaylist();
+    if (S.currentMode === 'library') {
+      renderPlaylist();
+    } else {
+      renderPlaylistTracks();
+    }
   }).catch(console.error);
 }
 
@@ -800,29 +1277,36 @@ function pauseAudio() {
   audio.pause(); S.playing = false; playBtn.textContent = '▶';
   albumArt.classList.add('paused-spin');
   statusText.textContent = 'Paused'; statusDot.classList.remove('live');
-  renderPlaylist();
+  if (S.currentMode === 'library') {
+    renderPlaylist();
+  } else {
+    renderPlaylistTracks();
+  }
 }
 
 function togglePlay() {
-  if (!S.tracks.length) { showToast('Add some tracks first!'); return; }
+  const tracks = getCurrentTracks();
+  if (!tracks.length) { showToast('Add some tracks first!'); return; }
   if (S.cur === -1) loadTrack(0);
   S.playing ? pauseAudio() : playAudio();
 }
 
 function nextTrack() {
-  if (!S.tracks.length) return;
+  const tracks = getCurrentTracks();
+  if (!tracks.length) return;
   S.shuffle
     ? (S.shPos = (S.shPos+1) % S.shOrder.length, loadTrack(S.shOrder[S.shPos]))
-    : loadTrack((S.cur+1) % S.tracks.length);
+    : loadTrack((S.cur+1) % tracks.length);
   if (S.playing) playAudio();
 }
 
 function prevTrack() {
-  if (!S.tracks.length) return;
+  const tracks = getCurrentTracks();
+  if (!tracks.length) return;
   if (audio.currentTime > 3) { audio.currentTime = 0; return; }
   S.shuffle
     ? (S.shPos = (S.shPos-1+S.shOrder.length) % S.shOrder.length, loadTrack(S.shOrder[S.shPos]))
-    : loadTrack((S.cur-1+S.tracks.length) % S.tracks.length);
+    : loadTrack((S.cur-1+tracks.length) % tracks.length);
   if (S.playing) playAudio();
 }
 
@@ -834,7 +1318,7 @@ function resetUI() {
   statusText.textContent = 'Ready'; statusDot.classList.remove('live');
 }
 
-/* ─── AUDIO EVENTS ──────────────────────────────────── */
+/* ─── AUDIO EVENTS ──────────────────────────────────– */
 audio.addEventListener('timeupdate', () => {
   if (!audio.duration) return;
   progFill.style.width = (audio.currentTime / audio.duration * 100) + '%';
@@ -842,7 +1326,15 @@ audio.addEventListener('timeupdate', () => {
 });
 audio.addEventListener('loadedmetadata', () => {
   timeTot.textContent = fmtTime(audio.duration);
-  if (S.cur >= 0) { S.tracks[S.cur].duration = audio.duration; renderPlaylist(); }
+  const tracks = getCurrentTracks();
+  if (S.cur >= 0 && tracks[S.cur]) {
+    tracks[S.cur].duration = audio.duration;
+    if (S.currentMode === 'library') {
+      renderPlaylist();
+    } else {
+      renderPlaylistTracks();
+    }
+  }
 });
 audio.addEventListener('ended', () => S.repeat ? (audio.currentTime=0, playAudio()) : nextTrack());
 
@@ -859,7 +1351,7 @@ progTrack.addEventListener('touchstart',  e => { scrubbing = true; seekTo(e.touc
 document.addEventListener('touchmove',   e => { if (scrubbing) seekTo(e.touches[0].clientX); }, {passive:true});
 document.addEventListener('touchend',    () => scrubbing = false);
 
-/* ─── VOLUME ────────────────────────────────────────── */
+/* ─── VOLUME ────────────────────────────────────────– */
 volSlider.addEventListener('input', () => {
   audio.volume = volSlider.value; S.muted = false;
   muteBtn.textContent = volSlider.value < .01 ? '🔇' : volSlider.value < .5 ? '🔉' : '🔊';
@@ -869,7 +1361,7 @@ muteBtn.addEventListener('click', () => {
   muteBtn.textContent = S.muted ? '🔇' : (volSlider.value < .5 ? '🔉' : '🔊');
 });
 
-/* ─── CONTROLS ──────────────────────────────────────── */
+/* ─── CONTROLS ──────────────────────────────────────– */
 playBtn.addEventListener('click', togglePlay);
 prevBtn.addEventListener('click', prevTrack);
 nextBtn.addEventListener('click', nextTrack);
@@ -897,6 +1389,29 @@ clearBtn.addEventListener('click', () => {
   S.tracks = []; S.cur = -1; S.playing = false;
   buildShuffle(); renderPlaylist(); resetUI(); updateStats();
   showToast('Playlist cleared');
+});
+
+/* ─── SIDEBAR NAVIGATION ────────────────────────────– */
+libNavBtn.addEventListener('click', () => {
+  libNavBtn.classList.add('active');
+  playNavBtn.classList.remove('active');
+  libTab.classList.add('show');
+  playTab.classList.remove('show');
+  switchToLibrary();
+});
+
+playNavBtn.addEventListener('click', () => {
+  playNavBtn.classList.add('active');
+  libNavBtn.classList.remove('active');
+  playTab.classList.add('show');
+  libTab.classList.remove('show');
+  renderPlaylists();
+});
+
+newPlaylistBtn.addEventListener('click', createPlaylist);
+syncSpotifyBtn.addEventListener('click', fetchSpotifyPlaylists);
+spotifyLoginBtn.addEventListener('click', () => {
+  window.location.href = getSpotifyAuthUrl();
 });
 
 /* ─── FILE INPUT ────────────────────────────────────── */
@@ -934,7 +1449,7 @@ let swipeY = 0;
 sidebar.addEventListener('touchstart', e => swipeY = e.touches[0].clientY, {passive:true});
 sidebar.addEventListener('touchend',   e => { if (e.changedTouches[0].clientY - swipeY > 60) closeDrawer(); }, {passive:true});
 
-/* ─── KEYBOARD ──────────────────────────────────────── */
+/* ─── KEYBOARD ──────────────────────────────────────– */
 document.addEventListener('keydown', e => {
   if (e.target.tagName === 'INPUT') return;
   switch (e.code) {
@@ -947,7 +1462,7 @@ document.addEventListener('keydown', e => {
   }
 });
 
-/* ─── TOAST ─────────────────────────────────────────── */
+/* ─── TOAST ─────────────────────────────────────────– */
 let toastTmr;
 function showToast(msg) {
   toastEl.textContent = msg;
@@ -956,11 +1471,15 @@ function showToast(msg) {
   toastTmr = setTimeout(() => toastEl.classList.remove('show'), 1800);
 }
 
-/* ─── INIT ──────────────────────────────────────────── */
+/* ─── INIT ──────────────────────────────────────────– */
 shuffleBtn.classList.add('active');
 shuffleCtrl.classList.add('active');
 updateStats();
 resizeCanvas();
+loadState();
+handleSpotifyCallback();
+updateSpotifyUI();
+libTab.classList.add('show');
 </script>
 </body>
 </html>
