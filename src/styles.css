@@ -4,25 +4,26 @@
 }
 
 :root {
-  --bg: #07110f;
-  --bg-soft: #0b1716;
-  --panel: #101c1c;
-  --panel-soft: #141f1d;
-  --line: rgba(235, 247, 239, 0.12);
-  --line-strong: rgba(206, 244, 220, 0.28);
-  --text: #eefcf5;
-  --text-soft: #b7d6c2;
-  --text-muted: #93a894;
-  --sage: #9bdaa3;
-  --sage-bright: #ccf2d1;
-  --sage-full: #a4f5aa;
-  --sage-deep: #25472f;
-  --sage-deep-2: #122519;
-  --gold: #e8d7a0;
-  --danger: #dca18a;
-  --shadow: rgba(0, 0, 0, 0.56);
-  --track-card: rgba(250, 253, 247, 0.037);
-  --track-card-hover: rgba(155, 218, 163, 0.11);
+  --bg: #080708;
+  --bg-soft: #100d0e;
+  --panel: #191416;
+  --panel-soft: #241b1b;
+  --line: rgba(247, 238, 224, 0.15);
+  --line-strong: rgba(220, 177, 104, 0.46);
+  --text: #f8f1e7;
+  --text-soft: #d4c5b7;
+  --text-muted: #a5968b;
+  --sage: #c99b5b;
+  --sage-bright: #f1d39a;
+  --sage-full: #dfb86f;
+  --sage-deep: #4b2d27;
+  --sage-deep-2: #28191a;
+  --gold: #dfb36a;
+  --cyan: #a96a70;
+  --danger: #e77970;
+  --shadow: rgba(0, 0, 0, 0.78);
+  --track-card: rgba(247, 238, 224, 0.052);
+  --track-card-hover: rgba(201, 155, 91, 0.15);
   --font: Inter, "Avenir Next", "Segoe UI", Arial, sans-serif;
 }
 
@@ -30,8 +31,9 @@ body {
   margin: 0;
   color: var(--text);
   background:
-    radial-gradient(circle at 71% 4%, rgba(73, 124, 94, 0.30), transparent 20%),
-    radial-gradient(circle at 30% 78%, rgba(148, 190, 140, 0.11), transparent 22%),
+    radial-gradient(circle at 78% 0%, rgba(137, 54, 68, 0.28), transparent 25%),
+    radial-gradient(circle at 18% 82%, rgba(201, 155, 91, 0.13), transparent 24%),
+    radial-gradient(circle at 52% 38%, rgba(241, 211, 154, 0.045), transparent 30%),
     var(--bg);
   font-family: var(--font);
   min-height: 100vh;
@@ -62,7 +64,7 @@ body::before {
 
 .sidebar {
   width: 280px;
-  background: linear-gradient(180deg, rgba(21, 37, 33, 0.84), rgba(10, 27, 24, 0.74));
+  background: linear-gradient(180deg, rgba(35, 25, 27, 0.96), rgba(12, 9, 10, 0.94));
   border: 1px solid var(--line);
   border-radius: 28px;
   padding: 24px 20px;
@@ -90,10 +92,10 @@ body::before {
   align-items: center;
   justify-content: center;
   border-radius: 50%;
-  background: rgba(155, 218, 163, 0.08);
+  background: rgba(215, 181, 109, 0.08);
   color: var(--sage-bright);
   border: 1px solid var(--line-strong);
-  box-shadow: inset 0 0 22px rgba(155, 218, 163, 0.08);
+  box-shadow: inset 0 0 22px rgba(215, 181, 109, 0.08);
 }
 
 .brand-mark svg {
@@ -112,7 +114,7 @@ body::before {
   width: 100%;
   border: 1px solid var(--sage);
   background: var(--sage);
-  color: #07110f;
+  color: var(--bg);
   border-radius: 14px;
   padding: 14px 16px;
   font-family: var(--font);
@@ -147,7 +149,7 @@ body::before {
 .empty-add:hover {
   background: var(--sage-bright);
   transform: translateY(-2px);
-  box-shadow: 0 10px 24px rgba(155, 218, 163, 0.18);
+  box-shadow: 0 10px 24px rgba(215, 181, 109, 0.18);
 }
 
 .nav-block {
@@ -183,7 +185,7 @@ body::before {
 }
 
 .nav-row.active {
-  background: rgba(155, 218, 163, 0.08);
+  background: rgba(215, 181, 109, 0.08);
   border-color: var(--line);
   color: var(--sage-bright);
 }
@@ -209,7 +211,7 @@ body::before {
 }
 
 .nav-row.playlist-nav-row.active {
-  background: rgba(155, 218, 163, 0.11);
+  background: rgba(215, 181, 109, 0.11);
   color: var(--sage-bright);
 }
 
@@ -248,7 +250,7 @@ body::before {
 .library-toolbar .icon-button:hover {
   color: var(--sage-bright);
   border-color: var(--sage);
-  background: rgba(155, 218, 163, 0.08);
+  background: rgba(215, 181, 109, 0.08);
 }
 
 .sort-wrap {
@@ -313,7 +315,7 @@ body::before {
 }
 
 .tiny-button:hover {
-  background: rgba(155, 218, 163, 0.08);
+  background: rgba(215, 181, 109, 0.08);
   border-color: var(--sage);
 }
 
@@ -437,7 +439,7 @@ body::before {
 }
 
 .group-open:hover {
-  background: rgba(155, 218, 163, 0.08);
+  background: rgba(215, 181, 109, 0.08);
   border-color: var(--sage);
 }
 
@@ -497,7 +499,7 @@ body::before {
 .favorite-track:hover,
 .favorite-track.favorite-active {
   color: var(--sage-bright);
-  background: rgba(155, 218, 163, 0.08);
+  background: rgba(215, 181, 109, 0.08);
   border-color: var(--sage);
 }
 
@@ -665,8 +667,8 @@ body::before {
 
 .search-wrap:focus-within {
   border-color: var(--sage);
-  box-shadow: 0 0 0 1px var(--sage-bright), 0 0 22px rgba(155, 218, 163, 0.14);
-  background: rgba(155, 218, 163, 0.05);
+  box-shadow: 0 0 0 1px var(--sage-bright), 0 0 22px rgba(215, 181, 109, 0.14);
+  background: rgba(215, 181, 109, 0.05);
 }
 
 .search-wrap input::placeholder {
@@ -694,15 +696,15 @@ body::before {
   padding: 44px 30px;
   border: 1px solid var(--line);
   background:
-    linear-gradient(160deg, rgba(155, 218, 163, 0.075), transparent),
-    radial-gradient(circle at 50% 100%, rgba(155, 218, 163, 0.08), transparent),
+    linear-gradient(160deg, rgba(215, 181, 109, 0.075), transparent),
+    radial-gradient(circle at 50% 100%, rgba(215, 181, 109, 0.08), transparent),
     var(--track-card);
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   gap: 12px;
-  box-shadow: inset 0 0 52px rgba(155, 218, 163, 0.035), 0 22px 60px var(--shadow);
+  box-shadow: inset 0 0 52px rgba(215, 181, 109, 0.035), 0 22px 60px var(--shadow);
 }
 
 .empty-card h2 {
@@ -721,13 +723,13 @@ body::before {
   width: 76px;
   height: 76px;
   border-radius: 50%;
-  background: rgba(155, 218, 163, 0.08);
+  background: rgba(215, 181, 109, 0.08);
   color: var(--sage-bright);
   border: 1px solid var(--line-strong);
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: inset 0 0 22px rgba(155, 218, 163, 0.12);
+  box-shadow: inset 0 0 22px rgba(215, 181, 109, 0.12);
 }
 
 .empty-icon svg {
@@ -777,9 +779,9 @@ body::before {
 }
 
 .track-card.active {
-  background: rgba(155, 218, 163, 0.12);
+  background: rgba(215, 181, 109, 0.12);
   border-color: var(--sage);
-  box-shadow: 0 0 0 1px var(--sage-bright), inset 0 0 20px rgba(155, 218, 163, 0.10);
+  box-shadow: 0 0 0 1px var(--sage-bright), inset 0 0 20px rgba(215, 181, 109, 0.10);
 }
 
 .track-card.active::after {
@@ -819,7 +821,7 @@ body::before {
   font-size: 24px;
   font-weight: 900;
   background:
-    radial-gradient(circle at 25% 15%, rgba(155, 218, 163, 0.22), transparent),
+    radial-gradient(circle at 25% 15%, rgba(215, 181, 109, 0.22), transparent),
     linear-gradient(135deg, var(--sage-deep), var(--panel-soft));
 }
 
@@ -943,7 +945,7 @@ body::before {
 
 .art-frame.active {
   border-color: var(--sage-bright);
-  box-shadow: 0 0 0 1px var(--sage), 0 0 24px rgba(155, 218, 163, 0.2);
+  box-shadow: 0 0 0 1px var(--sage), 0 0 24px rgba(215, 181, 109, 0.2);
 }
 
 .art-frame .art-image {
@@ -1027,7 +1029,7 @@ body::before {
 .icon-button:hover,
 .play-button:hover,
 .icon-button.active {
-  background: rgba(155, 218, 163, 0.12);
+  background: rgba(215, 181, 109, 0.12);
   color: var(--sage-bright);
   border-color: var(--sage);
 }
@@ -1036,7 +1038,7 @@ body::before {
 .icon-button#repeatBtn.repeat-active {
   color: var(--sage-bright);
   border-color: var(--sage);
-  background: rgba(155, 218, 163, 0.14);
+  background: rgba(215, 181, 109, 0.14);
 }
 
 .play-button {
@@ -1311,7 +1313,7 @@ body::before {
   .mobile-nav-row:hover {
     color: var(--sage-bright);
     border-color: var(--sage);
-    background: rgba(155, 218, 163, 0.08);
+    background: rgba(215, 181, 109, 0.08);
   }
 
   .add-music {
