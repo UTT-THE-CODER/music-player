@@ -73,3 +73,19 @@ python -m http.server 8080
 Then open:
 
 http://127.0.0.1:8080/index.html
+
+## Phase 4: PWA and Media Session
+
+- Added `manifest.webmanifest` with standalone display, theme/background colors, any-orientation support, and local EchoFree icons.
+- Added `service-worker.js` to cache the app shell and serve the cached document when navigation is offline.
+- Service-worker caching deliberately excludes audio requests; imported music remains in OPFS and metadata remains in IndexedDB.
+- Added optional service-worker registration in `src/pwa.js` with non-blocking update handling that does not force a reload during playback.
+- Added `src/audio/mediaSession.js` for feature-detected metadata, playback-state synchronization, play/pause, previous/next, and seek actions.
+- Media Session artwork uses only existing local `track.artwork` data and never fetches remote artwork.
+- Added local SVG app icons under `icons/` and a `build` script covering all JavaScript entry modules and the service worker.
+
+### Phase 4 Limitations
+
+- PWA installation and Media Session support depend on the browser and platform; unsupported browsers continue as a normal web app.
+- Background playback is available only where the browser and operating system allow HTMLAudioElement background media.
+- OPFS and IndexedDB still require browser support for persistent local music.

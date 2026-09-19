@@ -1,7 +1,9 @@
 import { buildLibrary, getTrackDurationLabel, getTrackDurationSeconds } from './library/library.js';
 import { buildAudioEngine } from './audio/audioEngine.js';
+import { bindMediaSession } from './audio/mediaSession.js';
 import { renderLibrary } from './library/renderLibrary.js';
 import { initUI } from './ui/ui.js';
+import { registerServiceWorker } from './pwa.js';
 import { initializeStorage, saveTrack, restoreTracks, deleteTrackFromStorage, getStorageError, updateTrackInStorage, savePlaylistToStorage, getAllPlaylistsFromStorage, getPlaylistFromStorage, deletePlaylistFromStorage, saveSettingValue, loadSettingValue } from './storage/libraryStorage.js';
 
 const state = {
@@ -47,6 +49,15 @@ const root = {
 const audioElement = document.getElementById('audio');
 const audioEngine = buildAudioEngine(audioElement);
 state.audio = audioElement;
+const mediaSession = bindMediaSession({
+  audioElement,
+  getTrack: () => state.tracks[state.currentTrackIndex],
+  onPlay: () => handlePlayPause(),
+  onPause: () => audioEngine.pause(),
+  onPrevious: () => playPrevious(),
+  onNext: () => playNext(),
+  onSeek: seconds => audioEngine.seek(seconds),
+});
 
 function refreshTrackCount() {
   root.trackCount.textContent = String(state.tracks.length);
@@ -330,6 +341,7 @@ function playTrack(index) {
     state.currentQueuePointer = 0;
   }
   audioEngine.setTrack(track);
+  mediaSession.syncMetadata();
   audioEngine.play();
   updatePlayHistory(track.id);
   refreshLibraryDisplay();
@@ -359,6 +371,7 @@ function updatePlayerDetails() {
     artImage.style.display = 'none';
     artPlaceholder.style.display = 'flex';
     artInitial.textContent = 'E';
+    mediaSession.syncMetadata();
     return;
   }
 
@@ -376,6 +389,7 @@ function updatePlayerDetails() {
   }
 
   if (artFrame) artFrame.classList.add('active');
+  mediaSession.syncMetadata();
 }
 
 function handlePlayPause() {
@@ -485,7 +499,7 @@ function renderQueue() {
     if (!track) return '';
     return `<div class="queue-row" data-queue-id="${escapeHtml(track.id)}">
       <span class="queue-title">${escapeHtml(track.title || 'Untitled Track')}</span>
-      <span class="queue-actions"><button class="queue-play" data-queue-play="${escapeHtml(track.id)}">Play</button><button class="queue-remove" data-queue-remove="${escapeHtml(track.id)}">×</button></span>
+      <span class="queue-actions"><button class="queue-play" data-queue-play="${escapeHtml(track.id)}">Play</button><button class="queue-remove" data-queue-remove="${escapeHtml(track.id)}">ï¿½</button></span>
     </div>`;
   }).join('');
 
@@ -743,3 +757,4 @@ renderLibrary([], [], -1, playTrack, deleteTrack, toggleFavorite, addTrackToQueu
 renderQueue();
 updatePlayerDetails();
 boot();
+registerServiceWorker();

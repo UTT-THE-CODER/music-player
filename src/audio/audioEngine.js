@@ -17,25 +17,6 @@ export function buildAudioEngine(audioElement) {
       } catch (e) {
         return;
       }
-      try {
-        if ('mediaSession' in navigator) {
-          if (!navigator.mediaSession.metadata) {
-            navigator.mediaSession.metadata = new MediaMetadata({
-              title: engine.track.title || 'Untitled Track',
-              artist: engine.track.artist || 'Unknown Artist',
-              artwork: engine.track.artwork ? [{ src: engine.track.artwork, sizes: '512x512', type: 'image/png' }] : []
-            });
-          }
-          if ('setActionHandler' in navigator.mediaSession) {
-            navigator.mediaSession.setActionHandler('play', () => engine.play());
-            navigator.mediaSession.setActionHandler('pause', () => engine.pause());
-            navigator.mediaSession.setActionHandler('previoustrack', () => engine.previous());
-            navigator.mediaSession.setActionHandler('nexttrack', () => engine.next());
-          }
-        }
-      } catch (e) {
-        // Media Session support is a feature-detected optional API.
-      }
     },
     pause() {
       audioElement.pause();
