@@ -1,0 +1,8 @@
+{
+    "chat.tools.terminal.autoApprove": {
+        "/^cd \"c:\\\\Users\\\\User\\\\Desktop\\\\coding\\\\projects to make my life easier\\\\offline music player\\\\offline music player\"; python -m http\\.server 8080$/": {
+            "approve": true,
+            "matchCommandLine": true
+        }
+    }
+}
