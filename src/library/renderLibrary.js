@@ -1,6 +1,6 @@
 import { getTrackDurationLabel } from './library.js';
 
-export function renderLibrary(tracks, allTracks, currentIndex, onTrackClick, onDeleteTrack, onToggleFavorite, onQueueTrack, onOpenContextMenu = null, deleteActionLabel = 'Remove from Library') {
+export function renderLibrary(tracks, allTracks, currentIndex, onTrackClick, onDeleteTrack, onToggleFavorite, onQueueTrack, onOpenContextMenu = null, deleteActionLabel = 'Remove from Library', selectionOptions = null) {
   const trackList = document.getElementById('trackList');
   if (!tracks.length) {
     trackList.innerHTML = '';
@@ -15,6 +15,7 @@ export function renderLibrary(tracks, allTracks, currentIndex, onTrackClick, onD
     const album = track.album || 'Unknown Album';
     const artwork = track.artwork || '';
     const favorite = Boolean(track.favorite);
+    const selected = selectionOptions?.selectedTrackIds?.has(track.id) || false;
     return `<article class="track-card ${active ? 'active' : ''}" data-index="${idx}" data-track-id="${escapeHtml(track.id || '')}" tabindex="0">
       <div class="track-art">
         ${artwork ? `<img src="${artwork}" alt="" class="track-image" />` : `<span class="track-art-placeholder">${(title || 'E').charAt(0).toUpperCase()}</span>`}
@@ -31,6 +32,7 @@ export function renderLibrary(tracks, allTracks, currentIndex, onTrackClick, onD
         </div>
       </div>
       <div class="track-actions">
+        ${selectionOptions ? `<button class="track-select-toggle ${selected ? 'selected' : ''}" data-action="select-track" aria-pressed="${selected}" aria-label="${selected ? 'Deselect' : 'Select'} ${escapeHtml(title)}">${selected ? '✓' : '+'}</button>` : ''}
         <button class="favorite-track ${favorite ? 'favorite-active' : ''}" data-action="favorite" aria-label="${favorite ? 'Unfavorite' : 'Favorite'} ${escapeHtml(title)}" title="${favorite ? 'Unfavorite' : 'Favorite'}">
           <svg viewBox="0 0 24 24" class="heart-icon"><path d="M12 21s-8-4.8-10-8.4C1.3 10.3 3 8 5.8 8c2 0 3.4 1.1 4 2.2C10.4 9.1 11.8 8 13.8 8c2.8 0 4.5 2.3 3.8 4.6C20 16.2 12 21 12 21z" fill="${favorite ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>
         </button>
@@ -69,6 +71,10 @@ export function renderLibrary(tracks, allTracks, currentIndex, onTrackClick, onD
       }
       if (action && action.dataset.action === 'favorite') {
         if (typeof onToggleFavorite === 'function') onToggleFavorite(clickedTrack.id);
+        return;
+      }
+      if (action && action.dataset.action === 'select-track') {
+        if (typeof selectionOptions?.onToggle === 'function') selectionOptions.onToggle(clickedTrack.id);
         return;
       }
       if (action && action.dataset.action === 'context') {

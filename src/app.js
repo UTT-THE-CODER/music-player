@@ -1,7 +1,7 @@
 import { buildLibrary, getTrackDurationLabel, getTrackDurationSeconds } from './library/library.js';
 import { buildAudioEngine } from './audio/audioEngine.js';
 import { bindMediaSession } from './audio/mediaSession.js';
-import { renderLibrary } from './library/renderLibrary.js?v=playlist-association-2';
+import { renderLibrary } from './library/renderLibrary.js?v=multi-playlist-1';
 import { initUI } from './ui/ui.js';
 import { registerServiceWorker } from './pwa.js?v=safe-update-1';
 import { initializeStorage, saveTrack, restoreTracks, deleteTrackFromStorage, getStorageError, updateTrackInStorage, savePlaylistToStorage, getAllPlaylistsFromStorage, getPlaylistFromStorage, deletePlaylistFromStorage, saveSettingValue, loadSettingValue } from './storage/libraryStorage.js?v=offline-1';
@@ -34,6 +34,8 @@ const state = {
   sortMode: 'title',
   playlists: [],
   queue: [],
+  trackSelectionMode: false,
+  selectedTrackIds: new Set(),
 };
 
 const root = {
@@ -54,12 +56,19 @@ const root = {
   playlistNameInput: document.getElementById('playlistNameInput'),
   cancelPlaylistBtn: document.getElementById('cancelPlaylistBtn'),
   addTrackToPlaylistDialog: document.getElementById('addTrackToPlaylistDialog'),
+  addTrackToPlaylistTitle: document.getElementById('addTrackToPlaylistTitle'),
   addTrackToPlaylistForm: document.getElementById('addTrackToPlaylistForm'),
   targetPlaylistSelect: document.getElementById('targetPlaylistSelect'),
   cancelAddToPlaylistBtn: document.getElementById('cancelAddToPlaylistBtn'),
+  skipImportedPlaylistBtn: document.getElementById('skipImportedPlaylistBtn'),
+  addTrackToPlaylistSubmitBtn: document.getElementById('addTrackToPlaylistSubmitBtn'),
   playlistNav: document.getElementById('playlistNav'),
   playAllBtn: document.getElementById('playAllBtn'),
   shuffleAllBtn: document.getElementById('shuffleAllBtn'),
+  selectTracksBtn: document.getElementById('selectTracksBtn'),
+  addSelectedToPlaylistBtn: document.getElementById('addSelectedToPlaylistBtn'),
+  cancelTrackSelectionBtn: document.getElementById('cancelTrackSelectionBtn'),
+  selectedTrackCount: document.getElementById('selectedTrackCount'),
   sortSelect: document.getElementById('sortSelect'),
   libraryTitle: document.getElementById('libraryTitle'),
   queuePanel: document.getElementById('queuePanel'),
@@ -175,6 +184,7 @@ function applySort(filtered) {
 function refreshLibraryDisplay() {
   let filtered = [];
   const query = state.search.trim().toLowerCase();
+  updateTrackSelectionToolbar();
 
   if (state.activeView === 'playlists') {
     renderPlaylistPicker();
@@ -224,10 +234,36 @@ function refreshLibraryDisplay() {
   const sorted = applySort(searchFiltered);
   const removeTrackAction = state.activeView === 'playlist' ? removeTrackFromActivePlaylist : deleteTrack;
   const removeTrackLabel = state.activeView === 'playlist' ? 'Remove from Playlist' : 'Remove from Library';
-  renderLibrary(sorted, state.tracks, state.currentTrackIndex, playTrack, removeTrackAction, toggleFavorite, addTrackToQueue, openContextPlaylist, removeTrackLabel);
+  const selectionOptions = state.activeView === 'all' && state.trackSelectionMode
+    ? { selectedTrackIds: state.selectedTrackIds, onToggle: toggleTrackSelection }
+    : null;
+  renderLibrary(sorted, state.tracks, state.currentTrackIndex, playTrack, removeTrackAction, toggleFavorite, addTrackToQueue, openContextPlaylist, removeTrackLabel, selectionOptions);
   root.emptyState.style.display = sorted.length === 0 ? 'flex' : 'none';
   root.trackList.style.display = sorted.length === 0 ? 'none' : 'grid';
   void refreshPlaylistDiagnosticData(sorted);
+}
+
+function updateTrackSelectionToolbar() {
+  const available = state.activeView === 'all';
+  root.selectTracksBtn.hidden = !available || state.trackSelectionMode;
+  root.addSelectedToPlaylistBtn.hidden = !state.trackSelectionMode || state.selectedTrackIds.size === 0;
+  root.cancelTrackSelectionBtn.hidden = !state.trackSelectionMode;
+  root.selectedTrackCount.textContent = String(state.selectedTrackIds.size);
+}
+
+function toggleTrackSelection(trackId) {
+  if (!state.trackSelectionMode || !state.tracks.some(track => track.id === trackId)) return;
+  if (state.selectedTrackIds.has(trackId)) state.selectedTrackIds.delete(trackId);
+  else state.selectedTrackIds.add(trackId);
+  updateTrackSelectionToolbar();
+  refreshLibraryDisplay();
+}
+
+function exitTrackSelectionMode() {
+  state.trackSelectionMode = false;
+  state.selectedTrackIds.clear();
+  updateTrackSelectionToolbar();
+  refreshLibraryDisplay();
 }
 
 function renderArtists() {
@@ -299,6 +335,7 @@ async function importFiles(fileList) {
 
   let imported = 0;
   let failed = 0;
+  const importedTracks = [];
 
   for (const file of files) {
     if (!file || !file.name || !/\.(mp3|wav|m4a|aac|ogg|oga|flac)$/i.test(file.name)) {
@@ -317,6 +354,7 @@ async function importFiles(fileList) {
       track.album = track.album || 'Unknown Album';
       if (!state.tracks.some(existing => existing.id === track.id)) {
         state.tracks.push(track);
+        importedTracks.push(track);
         imported += 1;
       } else {
         failed += 1;
@@ -343,6 +381,10 @@ async function importFiles(fileList) {
 
   refreshTrackCount();
   refreshLibraryDisplay();
+
+  if (state.playlists.length && importedTracks.length) {
+    await requestImportedTrackPlaylistChoice(importedTracks.map(track => track.id));
+  }
 }
 
 async function deleteTrack(trackId) {
@@ -556,7 +598,45 @@ function toggleFavorite(trackId) {
   renderPlaylists();
 }
 
-let pendingPlaylistTrackId = '';
+let pendingPlaylistTrackIds = [];
+let pendingImportPlaylistChoice = null;
+
+function populatePlaylistSelector(trackIds) {
+  pendingPlaylistTrackIds = Array.isArray(trackIds) ? [...trackIds] : [trackIds];
+  root.targetPlaylistSelect.innerHTML = `<option value="">Choose a playlist</option>${state.playlists.map(playlist => `<option value="${escapeHtml(playlist.id)}">${escapeHtml(playlist.name)}</option>`).join('')}`;
+  if (state.activeView === 'playlist' && state.activePlaylistId) {
+    root.targetPlaylistSelect.value = state.activePlaylistId;
+  }
+}
+
+function requestImportedTrackPlaylistChoice(trackIds) {
+  const validTrackIds = trackIds.filter(trackId => state.tracks.some(track => track.id === trackId));
+  if (!state.playlists.length || !validTrackIds.length) {
+    return Promise.resolve(false);
+  }
+
+  return new Promise(resolve => {
+    pendingImportPlaylistChoice = resolve;
+    populatePlaylistSelector(validTrackIds);
+    root.addTrackToPlaylistTitle.textContent = validTrackIds.length === 1
+      ? `Add "${state.tracks.find(track => track.id === validTrackIds[0])?.title || 'Untitled Track'}" to a playlist?`
+      : `Add ${validTrackIds.length} imported songs to a playlist?`;
+    root.addTrackToPlaylistSubmitBtn.textContent = validTrackIds.length === 1 ? 'Add Track' : 'Add Songs';
+    root.skipImportedPlaylistBtn.hidden = false;
+    root.addTrackToPlaylistDialog.showModal();
+  });
+}
+
+function finishPlaylistChoice(added = false) {
+  const resolve = pendingImportPlaylistChoice;
+  pendingImportPlaylistChoice = null;
+  pendingPlaylistTrackIds = [];
+  root.skipImportedPlaylistBtn.hidden = true;
+  root.addTrackToPlaylistTitle.textContent = 'Add to Playlist';
+  root.addTrackToPlaylistSubmitBtn.textContent = 'Add Track';
+  if (root.addTrackToPlaylistDialog.open) root.addTrackToPlaylistDialog.close();
+  if (resolve) resolve(added);
+}
 
 function openContextPlaylist(trackId) {
   const track = state.tracks.find(item => item.id === trackId);
@@ -566,15 +646,30 @@ function openContextPlaylist(trackId) {
     return;
   }
 
-  pendingPlaylistTrackId = track.id;
-  root.targetPlaylistSelect.innerHTML = `<option value="">Choose a playlist</option>${state.playlists.map(playlist => `<option value="${escapeHtml(playlist.id)}">${escapeHtml(playlist.name)}</option>`).join('')}`;
-  if (state.activeView === 'playlist' && state.activePlaylistId) {
-    root.targetPlaylistSelect.value = state.activePlaylistId;
-  }
+  pendingImportPlaylistChoice = null;
+  populatePlaylistSelector(track.id);
+  root.addTrackToPlaylistTitle.textContent = 'Add to Playlist';
+  root.addTrackToPlaylistSubmitBtn.textContent = 'Add Track';
+  root.skipImportedPlaylistBtn.hidden = true;
   root.addTrackToPlaylistDialog.showModal();
 }
 
-async function saveTrackToPlaylist(trackId, playlistId) {
+function openSelectedTrackPlaylistChoice() {
+  const selectedTrackIds = [...state.selectedTrackIds].filter(id => state.tracks.some(track => track.id === id));
+  if (!selectedTrackIds.length) return;
+  if (!state.playlists.length) {
+    showStorageStatus('Create a playlist before adding tracks.');
+    return;
+  }
+  pendingImportPlaylistChoice = null;
+  populatePlaylistSelector(selectedTrackIds);
+  root.addTrackToPlaylistTitle.textContent = `Add ${selectedTrackIds.length} selected songs to a playlist?`;
+  root.addTrackToPlaylistSubmitBtn.textContent = 'Add Songs';
+  root.skipImportedPlaylistBtn.hidden = true;
+  root.addTrackToPlaylistDialog.showModal();
+}
+
+async function saveTrackToPlaylist(trackId, playlistId, options = {}) {
   const track = state.tracks.find(item => item.id === trackId);
   const playlist = state.playlists.find(item => item.id === playlistId);
   if (playlistDebugEnabled) {
@@ -595,8 +690,8 @@ async function saveTrackToPlaylist(trackId, playlistId) {
 
   const existingTrackIds = Array.isArray(playlist.trackIds) ? playlist.trackIds : [];
   if (existingTrackIds.includes(track.id)) {
-    showStorageStatus(`Already in ${playlist.name}`);
-    return;
+    if (options.showStatus !== false) showStorageStatus(`Already in ${playlist.name}`);
+    return false;
   }
 
   const updatedPlaylist = {
@@ -646,8 +741,9 @@ async function saveTrackToPlaylist(trackId, playlistId) {
   }
 
   state.playlists = state.playlists.map(item => item.id === persistedPlaylist.id ? persistedPlaylist : item);
-  openPlaylist(persistedPlaylist.id);
-  showStorageStatus(`Added to ${persistedPlaylist.name}`);
+  if (options.navigate !== false) openPlaylist(persistedPlaylist.id);
+  if (options.showStatus !== false) showStorageStatus(`Added to ${persistedPlaylist.name}`);
+  return true;
 }
 
 async function removeTrackFromActivePlaylist(trackId) {
@@ -798,6 +894,14 @@ function openPlaylistDialog() {
 
 root.createPlaylistNav.addEventListener('click', openPlaylistDialog);
 root.mobileCreatePlaylistNav.addEventListener('click', openPlaylistDialog);
+root.selectTracksBtn.addEventListener('click', () => {
+  state.trackSelectionMode = true;
+  state.selectedTrackIds.clear();
+  updateTrackSelectionToolbar();
+  refreshLibraryDisplay();
+});
+root.cancelTrackSelectionBtn.addEventListener('click', exitTrackSelectionMode);
+root.addSelectedToPlaylistBtn.addEventListener('click', openSelectedTrackPlaylistChoice);
 root.cancelPlaylistBtn.addEventListener('click', () => root.playlistDialog.close());
 root.backToPlaylistsBtn.addEventListener('click', showPlaylistPicker);
 root.playlistDiagnosticCopyBtn.addEventListener('click', async () => {
@@ -824,17 +928,59 @@ root.playlistDiagnosticCopyBtn.addEventListener('click', async () => {
   root.playlistDiagnosticCopyStatus.textContent = copied ? 'Debug data copied.' : 'Copy failed; select and copy the JSON below.';
 });
 root.cancelAddToPlaylistBtn.addEventListener('click', () => {
-  pendingPlaylistTrackId = '';
+  if (pendingImportPlaylistChoice) {
+    finishPlaylistChoice(false);
+    return;
+  }
+  pendingPlaylistTrackIds = [];
   root.addTrackToPlaylistDialog.close();
+});
+root.skipImportedPlaylistBtn.addEventListener('click', () => finishPlaylistChoice(false));
+root.addTrackToPlaylistDialog.addEventListener('cancel', event => {
+  if (pendingImportPlaylistChoice) {
+    event.preventDefault();
+    finishPlaylistChoice(false);
+  }
 });
 root.addTrackToPlaylistForm.addEventListener('submit', async event => {
   event.preventDefault();
   const playlistId = root.targetPlaylistSelect.value;
-  if (!pendingPlaylistTrackId || !playlistId) return;
+  const trackIds = [...pendingPlaylistTrackIds];
+  if (!trackIds.length || !playlistId) return;
+  const importChoice = Boolean(pendingImportPlaylistChoice);
+  const bulkSelection = state.trackSelectionMode;
+  const selectedPlaylist = state.playlists.find(playlist => playlist.id === playlistId);
   try {
-    await saveTrackToPlaylist(pendingPlaylistTrackId, playlistId);
-    pendingPlaylistTrackId = '';
-    root.addTrackToPlaylistDialog.close();
+    if (trackIds.length > 1 || bulkSelection) {
+      let addedCount = 0;
+      for (const trackId of trackIds) {
+        if (await saveTrackToPlaylist(trackId, playlistId, { navigate: false, showStatus: false })) {
+          addedCount += 1;
+        }
+      }
+      if (importChoice) finishPlaylistChoice(addedCount > 0);
+      else {
+        pendingPlaylistTrackIds = [];
+        root.addTrackToPlaylistTitle.textContent = 'Add to Playlist';
+        root.addTrackToPlaylistSubmitBtn.textContent = 'Add Track';
+        root.addTrackToPlaylistDialog.close();
+      }
+      exitTrackSelectionMode();
+      if (addedCount > 0) {
+        openPlaylist(playlistId);
+        showStorageStatus(`${addedCount} ${addedCount === 1 ? 'song' : 'songs'} added to ${selectedPlaylist?.name || 'playlist'}`);
+      } else {
+        showStorageStatus(`Selected songs are already in ${selectedPlaylist?.name || 'that playlist'}`);
+      }
+      return;
+    }
+
+    const added = await saveTrackToPlaylist(trackIds[0], playlistId);
+    if (importChoice) finishPlaylistChoice(added);
+    else {
+      pendingPlaylistTrackIds = [];
+      root.addTrackToPlaylistDialog.close();
+    }
   } catch (_error) {
     showStorageStatus('Track could not be added to the playlist. Please try again.');
   }
@@ -937,6 +1083,8 @@ root.navRows.forEach(row => {
   row.addEventListener('click', () => {
     const view = row.dataset.view;
     if (!view) return;
+      state.trackSelectionMode = false;
+      state.selectedTrackIds.clear();
     state.activeView = view;
     state.activeArtist = '';
     state.activeAlbum = '';
@@ -945,6 +1093,7 @@ root.navRows.forEach(row => {
     state.search = '';
     root.searchInput.value = '';
     root.navRows.forEach(item => item.classList.toggle('active', item === row));
+    updateTrackSelectionToolbar();
     if (view === 'all') {
       root.libraryTitle.textContent = 'All Music';
     } else if (view === 'favorites') {

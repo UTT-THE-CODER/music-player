@@ -153,7 +153,8 @@
         <select id="targetPlaylistSelect" name="playlistId" required></select>
         <div class="playlist-dialog-actions">
           <button class="tiny-button" id="cancelAddToPlaylistBtn" type="button">Cancel</button>
-          <button class="empty-add" type="submit">Add Track</button>
+          <button class="tiny-button" id="skipImportedPlaylistBtn" type="button" hidden>Skip</button>
+          <button class="empty-add" id="addTrackToPlaylistSubmitBtn" type="submit">Add Track</button>
         </div>
       </form>
     </dialog>
@@ -177,6 +178,9 @@
           <div class="view-actions">
             <button class="icon-button small" id="playAllBtn">Play All</button>
             <button class="icon-button small" id="shuffleAllBtn">Shuffle All</button>
+            <button class="icon-button small" id="selectTracksBtn" type="button">Select Tracks</button>
+            <button class="icon-button small" id="addSelectedToPlaylistBtn" type="button" hidden>Add Selected to Playlist (<span id="selectedTrackCount">0</span>)</button>
+            <button class="tiny-button" id="cancelTrackSelectionBtn" type="button" hidden>Cancel</button>
           </div>
           <div class="sort-wrap">
             <label for="sortSelect" class="visually-hidden">Sort library</label>
@@ -307,6 +311,6 @@
   </section>
 
   <audio id="audio" preload="metadata"></audio>
-  <script type="module" src="src/app.js?v=playlist-debug-panel-2"></script>
+  <script type="module" src="src/app.js?v=multi-playlist-1"></script>
 </body>
 </html>
