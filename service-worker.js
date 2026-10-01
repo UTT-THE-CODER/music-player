@@ -1,15 +1,15 @@
-const CACHE_NAME = 'echofree-app-shell-v6';
+const CACHE_NAME = 'echofree-app-shell-v12';
 const APP_SHELL = [
   './',
   './index.html',
   './manifest.webmanifest',
   './src/styles.css?v=playlist-nav-1',
-  './src/app.js?v=playlist-nav-1',
-  './src/pwa.js',
+  './src/app.js?v=playlist-autonavigate-2',
+  './src/pwa.js?v=safe-update-1',
   './src/audio/audioEngine.js',
   './src/audio/mediaSession.js',
   './src/library/library.js',
-  './src/library/renderLibrary.js',
+  './src/library/renderLibrary.js?v=playlist-association-2',
   './src/storage/libraryStorage.js?v=offline-1',
   './src/storage/database.js?v=offline-1',
   './src/storage/opfs.js',
@@ -17,6 +17,12 @@ const APP_SHELL = [
   './icons/icon-192.svg',
   './icons/icon-512.svg',
 ];
+
+self.addEventListener('message', event => {
+  if (event.data?.type === 'SKIP_WAITING') {
+    self.skipWaiting();
+  }
+});
 
 self.addEventListener('install', event => {
   event.waitUntil(caches.open(CACHE_NAME).then(cache => cache.addAll(APP_SHELL)));

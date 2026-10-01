@@ -1,9 +1,9 @@
 import { buildLibrary, getTrackDurationLabel, getTrackDurationSeconds } from './library/library.js';
 import { buildAudioEngine } from './audio/audioEngine.js';
 import { bindMediaSession } from './audio/mediaSession.js';
-import { renderLibrary } from './library/renderLibrary.js';
+import { renderLibrary } from './library/renderLibrary.js?v=playlist-association-2';
 import { initUI } from './ui/ui.js';
-import { registerServiceWorker } from './pwa.js';
+import { registerServiceWorker } from './pwa.js?v=safe-update-1';
 import { initializeStorage, saveTrack, restoreTracks, deleteTrackFromStorage, getStorageError, updateTrackInStorage, savePlaylistToStorage, getAllPlaylistsFromStorage, getPlaylistFromStorage, deletePlaylistFromStorage, saveSettingValue, loadSettingValue } from './storage/libraryStorage.js?v=offline-1';
 
 const state = {
@@ -42,6 +42,10 @@ const root = {
   playlistForm: document.getElementById('playlistForm'),
   playlistNameInput: document.getElementById('playlistNameInput'),
   cancelPlaylistBtn: document.getElementById('cancelPlaylistBtn'),
+  addTrackToPlaylistDialog: document.getElementById('addTrackToPlaylistDialog'),
+  addTrackToPlaylistForm: document.getElementById('addTrackToPlaylistForm'),
+  targetPlaylistSelect: document.getElementById('targetPlaylistSelect'),
+  cancelAddToPlaylistBtn: document.getElementById('cancelAddToPlaylistBtn'),
   playlistNav: document.getElementById('playlistNav'),
   playAllBtn: document.getElementById('playAllBtn'),
   shuffleAllBtn: document.getElementById('shuffleAllBtn'),
@@ -136,7 +140,9 @@ function refreshLibraryDisplay() {
   });
 
   const sorted = applySort(searchFiltered);
-  renderLibrary(sorted, state.tracks, state.currentTrackIndex, playTrack, deleteTrack, toggleFavorite, addTrackToQueue, openContextPlaylist);
+  const removeTrackAction = state.activeView === 'playlist' ? removeTrackFromActivePlaylist : deleteTrack;
+  const removeTrackLabel = state.activeView === 'playlist' ? 'Remove from Playlist' : 'Remove from Library';
+  renderLibrary(sorted, state.tracks, state.currentTrackIndex, playTrack, removeTrackAction, toggleFavorite, addTrackToQueue, openContextPlaylist, removeTrackLabel);
   root.emptyState.style.display = sorted.length === 0 ? 'flex' : 'none';
   root.trackList.style.display = sorted.length === 0 ? 'none' : 'grid';
 }
@@ -467,30 +473,73 @@ function toggleFavorite(trackId) {
   renderPlaylists();
 }
 
+let pendingPlaylistTrackId = '';
+
 function openContextPlaylist(trackId) {
   const track = state.tracks.find(item => item.id === trackId);
   if (!track) return;
-  const chosen = prompt('Playlist name to add this track to (or create a new one)', 'My Playlist');
-  if (!chosen) return;
-  let playlist = state.playlists.find(item => item.name.toLowerCase() === chosen.toLowerCase());
-  if (!playlist) {
-    playlist = {
-      id: `playlist-${Date.now().toString(36)}`,
-      name: chosen,
-      createdAt: Date.now(),
-      updatedAt: Date.now(),
-      trackIds: []
-    };
-    state.playlists.push(playlist);
-    savePlaylistToStorage(playlist);
+  if (!state.playlists.length) {
+    showStorageStatus('Create a playlist before adding tracks.');
+    return;
   }
-  if (!playlist.trackIds.includes(track.id)) {
-    playlist.trackIds.push(track.id);
-    playlist.updatedAt = Date.now();
-    savePlaylistToStorage(playlist);
+
+  pendingPlaylistTrackId = track.id;
+  root.targetPlaylistSelect.innerHTML = `<option value="">Choose a playlist</option>${state.playlists.map(playlist => `<option value="${escapeHtml(playlist.id)}">${escapeHtml(playlist.name)}</option>`).join('')}`;
+  if (state.activeView === 'playlist' && state.activePlaylistId) {
+    root.targetPlaylistSelect.value = state.activePlaylistId;
   }
-  renderPlaylists();
-  showStorageStatus(`Added to ${playlist.name}`);
+  root.addTrackToPlaylistDialog.showModal();
+}
+
+async function saveTrackToPlaylist(trackId, playlistId) {
+  const track = state.tracks.find(item => item.id === trackId);
+  const playlist = state.playlists.find(item => item.id === playlistId);
+  if (!track || !playlist) throw new Error('The selected track or playlist is no longer available.');
+
+  const existingTrackIds = Array.isArray(playlist.trackIds) ? playlist.trackIds : [];
+  if (existingTrackIds.includes(track.id)) {
+    showStorageStatus(`Already in ${playlist.name}`);
+    return;
+  }
+
+  const updatedPlaylist = {
+    ...playlist,
+    trackIds: [...existingTrackIds, track.id],
+    updatedAt: Date.now(),
+  };
+  await savePlaylistToStorage(updatedPlaylist);
+  const persistedPlaylist = await getPlaylistFromStorage(updatedPlaylist.id);
+  if (!persistedPlaylist?.trackIds?.includes(track.id)) {
+    throw new Error('Playlist-track association was not persisted.');
+  }
+
+  state.playlists = state.playlists.map(item => item.id === persistedPlaylist.id ? persistedPlaylist : item);
+  openPlaylist(persistedPlaylist.id);
+  showStorageStatus(`Added to ${persistedPlaylist.name}`);
+}
+
+async function removeTrackFromActivePlaylist(trackId) {
+  const playlist = state.playlists.find(item => item.id === state.activePlaylistId);
+  if (!playlist) return;
+  const updatedPlaylist = {
+    ...playlist,
+    trackIds: (playlist.trackIds || []).filter(id => id !== trackId),
+    updatedAt: Date.now(),
+  };
+
+  try {
+    await savePlaylistToStorage(updatedPlaylist);
+    const persistedPlaylist = await getPlaylistFromStorage(updatedPlaylist.id);
+    if (!persistedPlaylist || persistedPlaylist.trackIds?.includes(trackId)) {
+      throw new Error('Playlist update was not persisted.');
+    }
+    state.playlists = state.playlists.map(item => item.id === persistedPlaylist.id ? persistedPlaylist : item);
+    renderPlaylists();
+    refreshLibraryDisplay();
+    showStorageStatus(`Removed from ${persistedPlaylist.name}`);
+  } catch (_error) {
+    showStorageStatus('Track could not be removed from this playlist. Please try again.');
+  }
 }
 
 function addTrackToQueue(trackId) {
@@ -618,6 +667,22 @@ root.createPlaylistNav.addEventListener('click', openPlaylistDialog);
 root.mobileCreatePlaylistNav.addEventListener('click', openPlaylistDialog);
 root.cancelPlaylistBtn.addEventListener('click', () => root.playlistDialog.close());
 root.backToPlaylistsBtn.addEventListener('click', showPlaylistPicker);
+root.cancelAddToPlaylistBtn.addEventListener('click', () => {
+  pendingPlaylistTrackId = '';
+  root.addTrackToPlaylistDialog.close();
+});
+root.addTrackToPlaylistForm.addEventListener('submit', async event => {
+  event.preventDefault();
+  const playlistId = root.targetPlaylistSelect.value;
+  if (!pendingPlaylistTrackId || !playlistId) return;
+  try {
+    await saveTrackToPlaylist(pendingPlaylistTrackId, playlistId);
+    pendingPlaylistTrackId = '';
+    root.addTrackToPlaylistDialog.close();
+  } catch (_error) {
+    showStorageStatus('Track could not be added to the playlist. Please try again.');
+  }
+});
 root.playlistForm.addEventListener('submit', async event => {
   event.preventDefault();
   const name = root.playlistNameInput.value.trim();
@@ -834,4 +899,4 @@ renderLibrary([], [], -1, playTrack, deleteTrack, toggleFavorite, addTrackToQueu
 renderQueue();
 updatePlayerDetails();
 boot();
-registerServiceWorker();
+registerServiceWorker({ audioElement });

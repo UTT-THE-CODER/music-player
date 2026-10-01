@@ -230,7 +230,8 @@ body::before {
   font-size: 12px;
 }
 
-.playlist-dialog input {
+.playlist-dialog input,
+.playlist-dialog select {
   width: 100%;
   min-height: 42px;
   padding: 10px 12px;
@@ -242,7 +243,8 @@ body::before {
   font: 14px var(--font);
 }
 
-.playlist-dialog input:focus {
+.playlist-dialog input:focus,
+.playlist-dialog select:focus {
   border-color: var(--sage);
   box-shadow: 0 0 0 1px var(--sage);
 }

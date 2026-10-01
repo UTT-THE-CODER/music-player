@@ -146,6 +146,18 @@
       </form>
     </dialog>
 
+    <dialog class="playlist-dialog" id="addTrackToPlaylistDialog" aria-labelledby="addTrackToPlaylistTitle">
+      <form id="addTrackToPlaylistForm">
+        <h2 id="addTrackToPlaylistTitle">Add to Playlist</h2>
+        <label for="targetPlaylistSelect">Choose playlist</label>
+        <select id="targetPlaylistSelect" name="playlistId" required></select>
+        <div class="playlist-dialog-actions">
+          <button class="tiny-button" id="cancelAddToPlaylistBtn" type="button">Cancel</button>
+          <button class="empty-add" type="submit">Add Track</button>
+        </div>
+      </form>
+    </dialog>
+
     <main class="library-panel">
       <section class="library-head">
         <div>
@@ -287,6 +299,6 @@
   </section>
 
   <audio id="audio" preload="metadata"></audio>
-  <script type="module" src="src/app.js?v=playlist-nav-1"></script>
+  <script type="module" src="src/app.js?v=playlist-autonavigate-2"></script>
 </body>
 </html>

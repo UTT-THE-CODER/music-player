@@ -1,6 +1,6 @@
 import { getTrackDurationLabel } from './library.js';
 
-export function renderLibrary(tracks, allTracks, currentIndex, onTrackClick, onDeleteTrack, onToggleFavorite, onQueueTrack, onOpenContextMenu = null) {
+export function renderLibrary(tracks, allTracks, currentIndex, onTrackClick, onDeleteTrack, onToggleFavorite, onQueueTrack, onOpenContextMenu = null, deleteActionLabel = 'Remove from Library') {
   const trackList = document.getElementById('trackList');
   if (!tracks.length) {
     trackList.innerHTML = '';
@@ -40,7 +40,7 @@ export function renderLibrary(tracks, allTracks, currentIndex, onTrackClick, onD
             <path d="M7 4v16l14-8z" fill="currentColor" />
           </svg>
         </button>
-        <button class="delete-track" aria-label="Delete ${escapeHtml(title)}" title="Delete track">
+        <button class="delete-track" aria-label="${escapeHtml(deleteActionLabel)} ${escapeHtml(title)}" title="${escapeHtml(deleteActionLabel)}">
           <svg viewBox="0 0 24 24" class="delete-icon">
             <path d="M4 7h16M10 11v6M14 11v6M6 7l1 14h10l1-14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
           </svg>
@@ -51,7 +51,7 @@ export function renderLibrary(tracks, allTracks, currentIndex, onTrackClick, onD
         <button class="context-menu-item" data-context="queue">Add to Queue</button>
         <button class="context-menu-item" data-context="playlist">Add to Playlist</button>
         <button class="context-menu-item" data-context="favorite">${favorite ? 'Unfavorite' : 'Favorite'}</button>
-        <button class="context-menu-item danger" data-context="delete">Remove from Library</button>
+        <button class="context-menu-item danger" data-context="delete">${escapeHtml(deleteActionLabel)}</button>
       </div>
     </article>`;
   }).join('');
