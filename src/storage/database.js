@@ -1,6 +1,7 @@
 const DB_NAME = 'echofree-offline-library';
-const DB_VERSION = 2;
+const DB_VERSION = 3;
 const STORE_NAME = 'tracks';
+const AUDIO_STORE_NAME = 'audio';
 const PLAYLIST_STORE_NAME = 'playlists';
 const SETTINGS_STORE_NAME = 'settings';
 
@@ -25,6 +26,10 @@ function openDatabase() {
         store.createIndex('album', 'album', { unique: false });
         store.createIndex('favorite', 'favorite', { unique: false });
         store.createIndex('lastPlayedAt', 'lastPlayedAt', { unique: false });
+      }
+
+      if (!db.objectStoreNames.contains(AUDIO_STORE_NAME)) {
+        db.createObjectStore(AUDIO_STORE_NAME, { keyPath: 'id' });
       }
 
       if (!db.objectStoreNames.contains(PLAYLIST_STORE_NAME)) {
@@ -109,6 +114,36 @@ export async function updateTrack(id, patch) {
       putRequest.onerror = () => reject(putRequest.error || new Error('Unable to update track metadata.'));
       putRequest.onsuccess = () => resolve(updated);
     };
+  });
+}
+
+export async function saveAudioBlob(id, blob) {
+  const db = await openDatabase();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(AUDIO_STORE_NAME, 'readwrite');
+    const request = tx.objectStore(AUDIO_STORE_NAME).put({ id, blob });
+    request.onerror = () => reject(request.error || new Error('Unable to save audio backup.'));
+    request.onsuccess = () => resolve(true);
+  });
+}
+
+export async function getAudioBlob(id) {
+  const db = await openDatabase();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(AUDIO_STORE_NAME, 'readonly');
+    const request = tx.objectStore(AUDIO_STORE_NAME).get(id);
+    request.onerror = () => reject(request.error || new Error('Unable to load audio backup.'));
+    request.onsuccess = () => resolve(request.result?.blob || null);
+  });
+}
+
+export async function deleteAudioBlob(id) {
+  const db = await openDatabase();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(AUDIO_STORE_NAME, 'readwrite');
+    const request = tx.objectStore(AUDIO_STORE_NAME).delete(id);
+    request.onerror = () => reject(request.error || new Error('Unable to delete audio backup.'));
+    request.onsuccess = () => resolve(true);
   });
 }
 

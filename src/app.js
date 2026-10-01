@@ -4,7 +4,7 @@ import { bindMediaSession } from './audio/mediaSession.js';
 import { renderLibrary } from './library/renderLibrary.js';
 import { initUI } from './ui/ui.js';
 import { registerServiceWorker } from './pwa.js';
-import { initializeStorage, saveTrack, restoreTracks, deleteTrackFromStorage, getStorageError, updateTrackInStorage, savePlaylistToStorage, getAllPlaylistsFromStorage, getPlaylistFromStorage, deletePlaylistFromStorage, saveSettingValue, loadSettingValue } from './storage/libraryStorage.js';
+import { initializeStorage, saveTrack, restoreTracks, deleteTrackFromStorage, getStorageError, updateTrackInStorage, savePlaylistToStorage, getAllPlaylistsFromStorage, getPlaylistFromStorage, deletePlaylistFromStorage, saveSettingValue, loadSettingValue } from './storage/libraryStorage.js?v=offline-1';
 
 const state = {
   tracks: [],
@@ -36,6 +36,11 @@ const root = {
   storageStatus: document.getElementById('storageStatus'),
   navRows: Array.from(document.querySelectorAll('[data-view]')),
   createPlaylistNav: document.getElementById('createPlaylistNav'),
+  mobileCreatePlaylistNav: document.getElementById('mobileCreatePlaylistNav'),
+  playlistDialog: document.getElementById('playlistDialog'),
+  playlistForm: document.getElementById('playlistForm'),
+  playlistNameInput: document.getElementById('playlistNameInput'),
+  cancelPlaylistBtn: document.getElementById('cancelPlaylistBtn'),
   playlistNav: document.getElementById('playlistNav'),
   playAllBtn: document.getElementById('playAllBtn'),
   shuffleAllBtn: document.getElementById('shuffleAllBtn'),
@@ -544,19 +549,50 @@ function renderPlaylists() {
   });
 }
 
-function addPlaylist(name) {
-  if (!name) return;
+async function addPlaylist(name) {
+  const normalizedName = String(name || '').trim();
+  if (!normalizedName) return false;
   const playlist = {
     id: `playlist-${Date.now().toString(36)}`,
-    name,
+    name: normalizedName,
     createdAt: Date.now(),
     updatedAt: Date.now(),
     trackIds: []
   };
-  state.playlists.push(playlist);
-  savePlaylistToStorage(playlist);
+  await savePlaylistToStorage(playlist);
+  const savedPlaylist = await getPlaylistFromStorage(playlist.id);
+  if (!savedPlaylist) throw new Error('Playlist was not found after saving.');
+  state.playlists.push(savedPlaylist);
   renderPlaylists();
+  return true;
 }
+
+function openPlaylistDialog() {
+  root.playlistNameInput.value = '';
+  root.playlistDialog.showModal();
+  root.playlistNameInput.focus();
+}
+
+root.createPlaylistNav.addEventListener('click', openPlaylistDialog);
+root.mobileCreatePlaylistNav.addEventListener('click', openPlaylistDialog);
+root.cancelPlaylistBtn.addEventListener('click', () => root.playlistDialog.close());
+root.playlistForm.addEventListener('submit', async event => {
+  event.preventDefault();
+  const name = root.playlistNameInput.value.trim();
+  if (!name) {
+    root.playlistNameInput.setCustomValidity('Enter a playlist name.');
+    root.playlistNameInput.reportValidity();
+    return;
+  }
+
+  root.playlistNameInput.setCustomValidity('');
+  try {
+    await addPlaylist(name);
+    root.playlistDialog.close();
+  } catch (_error) {
+    showStorageStatus('Playlist could not be saved. Please try again.');
+  }
+});
 
 function deletePlaylist(id) {
   const playlist = state.playlists.find(item => item.id === id);
@@ -660,12 +696,6 @@ root.navRows.forEach(row => {
     }
     refreshLibraryDisplay();
   });
-});
-
-root.createPlaylistNav.addEventListener('click', () => {
-  const name = prompt('Playlist name', 'My Playlist');
-  if (!name) return;
-  addPlaylist(name);
 });
 
 root.playAllBtn.addEventListener('click', () => {

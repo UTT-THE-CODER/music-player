@@ -89,3 +89,12 @@ http://127.0.0.1:8080/index.html
 - PWA installation and Media Session support depend on the browser and platform; unsupported browsers continue as a normal web app.
 - Background playback is available only where the browser and operating system allow HTMLAudioElement background media.
 - OPFS and IndexedDB still require browser support for persistent local music.
+- The audio persistence path now keeps an IndexedDB Blob backup for every imported file. OPFS remains the primary store, while IndexedDB is used when OPFS is unavailable or cannot be opened/written after a relaunch.
+
+## Offline Reliability Fix
+
+- Desktop verification confirmed the service worker is activated, controls the root scope, caches the full app shell, and serves the cached document when navigation is offline.
+- The failure-prone layer was storage initialization: a failed OPFS capability/open check previously caused `restoreTracks()` to return an empty library even when metadata existed.
+- Storage initialization now probes IndexedDB as a fallback, restores audio from OPFS first and IndexedDB Blob second, and still creates the same object URL consumed by the existing HTMLAudioElement.
+- Service-worker navigation fallback now uses the cached `index.html` within a bounded timeout instead of waiting indefinitely on an offline network request.
+

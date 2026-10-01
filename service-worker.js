@@ -1,17 +1,17 @@
-const CACHE_NAME = 'echofree-app-shell-v1';
+const CACHE_NAME = 'echofree-app-shell-v4';
 const APP_SHELL = [
   './',
   './index.html',
   './manifest.webmanifest',
   './src/styles.css',
-  './src/app.js',
+  './src/app.js?v=playlist-fix-1',
   './src/pwa.js',
   './src/audio/audioEngine.js',
   './src/audio/mediaSession.js',
   './src/library/library.js',
   './src/library/renderLibrary.js',
-  './src/storage/database.js',
-  './src/storage/libraryStorage.js',
+  './src/storage/libraryStorage.js?v=offline-1',
+  './src/storage/database.js?v=offline-1',
   './src/storage/opfs.js',
   './src/ui/ui.js',
   './icons/icon-192.svg',
@@ -45,7 +45,11 @@ self.addEventListener('fetch', event => {
 
   if (request.mode === 'navigate') {
     event.respondWith(
-      fetch(request).catch(() => caches.match('./index.html'))
+      caches.match('./index.html').then(cached => {
+        const network = fetch(request).catch(() => cached);
+        const timeout = new Promise(resolve => setTimeout(() => resolve(cached), 2500));
+        return Promise.race([network, timeout]).then(response => response || cached);
+      })
     );
     return;
   }

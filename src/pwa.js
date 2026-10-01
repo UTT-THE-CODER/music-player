@@ -18,3 +18,16 @@ export async function registerServiceWorker() {
     return null;
   }
 }
+
+export async function getServiceWorkerStatus() {
+  if (!('serviceWorker' in navigator)) {
+    return { supported: false, controlled: false, scope: '' };
+  }
+  const registration = await navigator.serviceWorker.getRegistration();
+  return {
+    supported: true,
+    controlled: Boolean(navigator.serviceWorker.controller),
+    scope: registration?.scope || '',
+    state: registration?.active?.state || registration?.installing?.state || registration?.waiting?.state || 'none',
+  };
+}

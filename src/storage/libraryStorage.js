@@ -1,4 +1,4 @@
-import { saveTrack as saveMetadata, getAllTracks as getAllMetadata, getTrack as getMetadata, deleteTrack as deleteMetadata, clearLibrary as clearMetadata, savePlaylist, getAllPlaylists, getPlaylist, deletePlaylist as deletePlaylistMetadata, saveSetting, loadSetting, updateTrack } from './database.js';
+import { saveTrack as saveMetadata, getAllTracks as getAllMetadata, getTrack as getMetadata, deleteTrack as deleteMetadata, clearLibrary as clearMetadata, savePlaylist, getAllPlaylists, getPlaylist, deletePlaylist as deletePlaylistMetadata, saveSetting, loadSetting, updateTrack, saveAudioBlob, getAudioBlob as getAudioBackup, deleteAudioBlob } from './database.js?v=offline-1';
 import { openOpfsRoots, storeAudioFile, getAudioBlob, deleteAudioFile, storeArtworkBlob, getArtworkBlob, deleteArtworkFile, opfsSupported } from './opfs.js';
 import { inferArtistFromFile, getTrackDurationLabel, getTrackDurationSeconds } from '../library/library.js';
 
@@ -23,9 +23,19 @@ function stableTrackId(file) {
 export async function initializeStorage() {
   storage.supported = opfsSupported();
   if (!storage.supported) {
-    storage.ready = false;
-    storage.error = 'OPFS is unavailable in this browser. Persistent local audio storage is unsupported.';
-    return false;
+    try {
+      await saveAudioBlob('__storage_probe__', new Blob(['probe'], { type: 'application/octet-stream' }));
+      await deleteAudioBlob('__storage_probe__');
+      storage.ready = true;
+      storage.supported = true;
+      storage.roots = null;
+      storage.error = 'OPFS unavailable; using IndexedDB audio fallback.';
+      return true;
+    } catch (_fallbackError) {
+      storage.ready = false;
+      storage.error = 'Persistent local storage is unavailable in this browser.';
+      return false;
+    }
   }
 
   try {
@@ -34,10 +44,20 @@ export async function initializeStorage() {
     storage.error = '';
     return true;
   } catch (e) {
+    storage.roots = null;
     storage.ready = false;
-    storage.supported = false;
-    storage.error = e && e.message ? e.message : 'Persistent storage is unavailable in this browser.';
-    return false;
+    try {
+      await saveAudioBlob('__storage_probe__', new Blob(['probe'], { type: 'application/octet-stream' }));
+      await deleteAudioBlob('__storage_probe__');
+      storage.supported = true;
+      storage.ready = true;
+      storage.error = 'OPFS unavailable; using IndexedDB audio fallback.';
+      return true;
+    } catch (_fallbackError) {
+      storage.supported = false;
+      storage.error = e && e.message ? e.message : 'Persistent local storage is unavailable in this browser.';
+      return false;
+    }
   }
 }
 
@@ -59,7 +79,16 @@ export async function saveTrack(file) {
 
   const trackId = stableTrackId(file);
   const extension = normalizeExtension(file.name);
-  const audioPath = await storeAudioFile(file, trackId, extension);
+  let audioPath = '';
+  if (storage.roots) {
+    try {
+      audioPath = await storeAudioFile(file, trackId, extension);
+    } catch (_error) {
+      storage.roots = null;
+      storage.error = 'OPFS write unavailable; using IndexedDB audio fallback.';
+    }
+  }
+  await saveAudioBlob(trackId, file);
 
   const baseTitle = file.name.replace(/\.[^/.]+$/, '') || `Track ${Date.now().toString(36)}`;
   const created = {
@@ -81,6 +110,7 @@ export async function saveTrack(file) {
     audioPath,
     ext: extension,
     fileType: file.type || 'audio/mpeg',
+    audioStorage: audioPath ? 'opfs' : 'indexeddb',
   };
 
   const probe = new Audio();
@@ -117,7 +147,8 @@ export async function restoreTracks() {
 
   for (const track of saved) {
     try {
-      const blob = await getAudioBlob(track);
+      let blob = storage.roots ? await getAudioBlob(track) : null;
+      if (!blob) blob = await getAudioBackup(track.id);
       if (!blob) {
         await deleteMetadata(track.id);
         continue;
@@ -138,7 +169,8 @@ export async function restoreTracks() {
 export async function deleteTrackFromStorage(track) {
   if (!track || !track.id) return false;
   try {
-    await deleteAudioFile(track);
+    if (storage.roots) await deleteAudioFile(track);
+    await deleteAudioBlob(track.id);
     await deleteArtworkFile(track);
     await deleteMetadata(track.id);
     const playlists = await getAllPlaylists();

@@ -401,3 +401,31 @@ The existing variable names such as `--sage` were retained so component selector
 The page background combines an obsidian base with low-opacity burgundy and antique-gold radial light. This creates depth while keeping text and controls readable. The local app icons use the same obsidian, gold, and warm-ivory identity.
 
 This approach is useful because one token change can update buttons, active navigation, track cards, focus states, player controls, and install chrome together. It also keeps future theme changes localized to the design-token block.
+
+## 19. Offline Storage Reliability
+
+EchoFree keeps OPFS as the primary audio store, but now maintains a browser-local IndexedDB Blob backup for each imported file. This matters on platforms where OPFS may be unavailable, delayed, or unable to reopen after an installed-app relaunch.
+
+The restore order is:
+
+```text
+IndexedDB track metadata
+          |
+          v
+Try OPFS audio file
+          |
+          v
+If unavailable, try IndexedDB audio Blob
+          |
+          v
+URL.createObjectURL(blob)
+          |
+          v
+Existing HTMLAudioElement
+```
+
+The audio engine was not changed. It still receives one local object URL. The fallback is contained in `libraryStorage.js` and the new `audio` IndexedDB object store.
+
+Storage initialization now probes the fallback store when OPFS is missing or fails to open. A real OPFS write failure also switches that import to IndexedDB without changing the playback path.
+
+The service worker separately handles only the app shell. It never stores user audio in Cache Storage. Offline navigation has a bounded network wait and returns cached `index.html` when the network is unavailable.

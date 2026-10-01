@@ -46,9 +46,9 @@
           <div class="mobile-nav-row" data-view="albums">
             <span>Albums</span>
           </div>
-          <div class="mobile-nav-row" id="mobileCreatePlaylistNav">
+          <button class="mobile-nav-row" id="mobileCreatePlaylistNav" type="button">
             <span>Create Playlist</span>
-          </div>
+          </button>
         </div>
       </section>
 
@@ -130,6 +130,18 @@
 
       <input type="file" id="fileInput" accept="audio/mpeg,audio/mp3,audio/wav,audio/x-wav,audio/m4a,audio/mp4,audio/aac,audio/ogg,audio/oga" multiple class="visually-hidden" />
     </aside>
+
+    <dialog class="playlist-dialog" id="playlistDialog" aria-labelledby="playlistDialogTitle">
+      <form id="playlistForm">
+        <h2 id="playlistDialogTitle">Create Playlist</h2>
+        <label for="playlistNameInput">Playlist name</label>
+        <input id="playlistNameInput" name="playlistName" type="text" maxlength="80" required autocomplete="off" />
+        <div class="playlist-dialog-actions">
+          <button class="tiny-button" id="cancelPlaylistBtn" type="button">Cancel</button>
+          <button class="empty-add" type="submit">Create</button>
+        </div>
+      </form>
+    </dialog>
 
     <main class="library-panel">
       <section class="library-head">
@@ -271,6 +283,6 @@
   </section>
 
   <audio id="audio" preload="metadata"></audio>
-  <script type="module" src="src/app.js"></script>
+  <script type="module" src="src/app.js?v=playlist-fix-1"></script>
 </body>
 </html>
