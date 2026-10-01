@@ -37,6 +37,7 @@ const root = {
   navRows: Array.from(document.querySelectorAll('[data-view]')),
   createPlaylistNav: document.getElementById('createPlaylistNav'),
   mobileCreatePlaylistNav: document.getElementById('mobileCreatePlaylistNav'),
+  backToPlaylistsBtn: document.getElementById('backToPlaylistsBtn'),
   playlistDialog: document.getElementById('playlistDialog'),
   playlistForm: document.getElementById('playlistForm'),
   playlistNameInput: document.getElementById('playlistNameInput'),
@@ -91,6 +92,11 @@ function applySort(filtered) {
 function refreshLibraryDisplay() {
   let filtered = [];
   const query = state.search.trim().toLowerCase();
+
+  if (state.activeView === 'playlists') {
+    renderPlaylistPicker();
+    return;
+  }
 
   if (state.activeView === 'artists') {
     renderArtists();
@@ -537,16 +543,50 @@ function renderPlaylists() {
   }
   root.playlistNav.innerHTML = state.playlists.map(playlist => `<div class="nav-row playlist-nav-row" data-playlist-id="${escapeHtml(playlist.id)}"><span>${escapeHtml(playlist.name)}</span></div>`).join('');
   root.playlistNav.querySelectorAll('[data-playlist-id]').forEach(row => {
-    row.addEventListener('click', () => {
-      const id = row.dataset.playlistId;
-      const playlist = state.playlists.find(item => item.id === id);
-      if (!playlist) return;
-      state.activeView = 'playlist';
-      state.activePlaylistId = id;
-      root.libraryTitle.textContent = playlist.name;
-      refreshLibraryDisplay();
-    });
+    row.addEventListener('click', () => openPlaylist(row.dataset.playlistId));
   });
+}
+
+function renderPlaylistPicker() {
+  root.libraryTitle.textContent = 'Playlists';
+  root.backToPlaylistsBtn.hidden = true;
+  root.emptyState.style.display = 'none';
+  root.trackList.style.display = 'grid';
+  root.trackList.innerHTML = state.playlists.length
+    ? `<div class="mobile-playlist-picker">${state.playlists.map(playlist => {
+      const count = Array.isArray(playlist.trackIds) ? playlist.trackIds.length : 0;
+      const selected = state.activePlaylistId === playlist.id;
+      return `<button class="mobile-playlist-choice ${selected ? 'active' : ''}" data-mobile-playlist-id="${escapeHtml(playlist.id)}" type="button" aria-pressed="${selected}">
+        <span class="mobile-playlist-choice-copy"><strong>${escapeHtml(playlist.name)}</strong><span>${count} ${count === 1 ? 'track' : 'tracks'}</span></span>
+        <span class="mobile-playlist-choice-arrow" aria-hidden="true">›</span>
+      </button>`;
+    }).join('')}</div>`
+    : '<div class="mobile-playlist-empty"><strong>No playlists yet</strong><span>Create a playlist to see it here.</span></div>';
+  root.trackList.querySelectorAll('[data-mobile-playlist-id]').forEach(button => {
+    button.addEventListener('click', () => openPlaylist(button.dataset.mobilePlaylistId));
+  });
+}
+
+function openPlaylist(playlistId) {
+  const playlist = state.playlists.find(item => item.id === playlistId);
+  if (!playlist) return;
+  state.activeView = 'playlist';
+  state.activePlaylistId = playlistId;
+  state.activeArtist = '';
+  state.activeAlbum = '';
+  state.search = '';
+  root.searchInput.value = '';
+  root.libraryTitle.textContent = playlist.name;
+  root.backToPlaylistsBtn.hidden = false;
+  document.querySelectorAll('.mobile-nav-list [data-view]').forEach(row => row.classList.toggle('active', row.dataset.view === 'playlists'));
+  renderPlaylists();
+  refreshLibraryDisplay();
+}
+
+function showPlaylistPicker() {
+  state.activeView = 'playlists';
+  document.querySelectorAll('.mobile-nav-list [data-view]').forEach(row => row.classList.toggle('active', row.dataset.view === 'playlists'));
+  renderPlaylistPicker();
 }
 
 async function addPlaylist(name) {
@@ -564,6 +604,7 @@ async function addPlaylist(name) {
   if (!savedPlaylist) throw new Error('Playlist was not found after saving.');
   state.playlists.push(savedPlaylist);
   renderPlaylists();
+  if (state.activeView === 'playlists') renderPlaylistPicker();
   return true;
 }
 
@@ -576,6 +617,7 @@ function openPlaylistDialog() {
 root.createPlaylistNav.addEventListener('click', openPlaylistDialog);
 root.mobileCreatePlaylistNav.addEventListener('click', openPlaylistDialog);
 root.cancelPlaylistBtn.addEventListener('click', () => root.playlistDialog.close());
+root.backToPlaylistsBtn.addEventListener('click', showPlaylistPicker);
 root.playlistForm.addEventListener('submit', async event => {
   event.preventDefault();
   const name = root.playlistNameInput.value.trim();
@@ -603,6 +645,7 @@ function deletePlaylist(id) {
   if (state.activeView === 'playlist' && state.activePlaylistId === id) {
     state.activeView = 'all';
     state.activePlaylistId = '';
+    root.backToPlaylistsBtn.hidden = true;
     root.libraryTitle.textContent = 'All Music';
   }
   renderPlaylists();
@@ -675,7 +718,8 @@ root.navRows.forEach(row => {
     state.activeView = view;
     state.activeArtist = '';
     state.activeAlbum = '';
-    state.activePlaylistId = '';
+    if (view !== 'playlists') state.activePlaylistId = '';
+    root.backToPlaylistsBtn.hidden = true;
     state.search = '';
     root.searchInput.value = '';
     root.navRows.forEach(item => item.classList.toggle('active', item === row));
@@ -692,6 +736,9 @@ root.navRows.forEach(row => {
     } else if (view === 'albums') {
       root.libraryTitle.textContent = 'Albums';
       renderAlbums();
+      return;
+    } else if (view === 'playlists') {
+      renderPlaylistPicker();
       return;
     }
     refreshLibraryDisplay();

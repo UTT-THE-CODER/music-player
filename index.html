@@ -12,7 +12,7 @@
   <link rel="icon" href="icons/icon-192.svg" type="image/svg+xml" />
   <link rel="apple-touch-icon" href="icons/icon-192.svg" />
   <title>EchoFree</title>
-  <link rel="stylesheet" href="src/styles.css" />
+  <link rel="stylesheet" href="src/styles.css?v=playlist-nav-1" />
 </head>
 <body>
   <div class="app-frame">
@@ -46,6 +46,9 @@
           <div class="mobile-nav-row" data-view="albums">
             <span>Albums</span>
           </div>
+          <button class="mobile-nav-row" data-view="playlists" type="button">
+            <span>Playlists</span>
+          </button>
           <button class="mobile-nav-row" id="mobileCreatePlaylistNav" type="button">
             <span>Create Playlist</span>
           </button>
@@ -192,6 +195,7 @@
         </section>
 
         <section id="libraryTitle" class="library-title-row">All Music</section>
+        <button id="backToPlaylistsBtn" class="tiny-button mobile-only" type="button" hidden>Back to playlists</button>
         <section id="queuePanel" class="queue-panel">
           <div class="queue-head">
             <span>Queue</span>
@@ -283,6 +287,6 @@
   </section>
 
   <audio id="audio" preload="metadata"></audio>
-  <script type="module" src="src/app.js?v=playlist-fix-1"></script>
+  <script type="module" src="src/app.js?v=playlist-nav-1"></script>
 </body>
 </html>

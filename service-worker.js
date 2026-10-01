@@ -1,10 +1,10 @@
-const CACHE_NAME = 'echofree-app-shell-v4';
+const CACHE_NAME = 'echofree-app-shell-v6';
 const APP_SHELL = [
   './',
   './index.html',
   './manifest.webmanifest',
-  './src/styles.css',
-  './src/app.js?v=playlist-fix-1',
+  './src/styles.css?v=playlist-nav-1',
+  './src/app.js?v=playlist-nav-1',
   './src/pwa.js',
   './src/audio/audioEngine.js',
   './src/audio/mediaSession.js',
