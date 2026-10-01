@@ -12,7 +12,7 @@
   <link rel="icon" href="icons/icon-192.svg" type="image/svg+xml" />
   <link rel="apple-touch-icon" href="icons/icon-192.svg" />
   <title>EchoFree</title>
-  <link rel="stylesheet" href="src/styles.css?v=playlist-nav-1" />
+  <link rel="stylesheet" href="src/styles.css?v=playlist-debug-panel-1" />
 </head>
 <body>
   <div class="app-frame">
@@ -217,6 +217,14 @@
         </section>
         <section id="trackList" class="track-list" aria-live="polite"></section>
         <section id="storageStatus" class="storage-status" hidden></section>
+        <section id="playlistDiagnosticPanel" class="playlist-diagnostic-panel" aria-labelledby="playlistDiagnosticTitle" hidden>
+          <div class="playlist-diagnostic-head">
+            <h2 id="playlistDiagnosticTitle">Playlist Diagnostics</h2>
+            <button id="copyPlaylistDiagnosticBtn" class="tiny-button" type="button">Copy Debug Data</button>
+          </div>
+          <div id="playlistDiagnosticCopyStatus" class="playlist-diagnostic-copy-status" role="status"></div>
+          <pre id="playlistDiagnosticOutput"></pre>
+        </section>
       </section>
     </main>
   </div>
@@ -299,6 +307,6 @@
   </section>
 
   <audio id="audio" preload="metadata"></audio>
-  <script type="module" src="src/app.js?v=playlist-autonavigate-2"></script>
+  <script type="module" src="src/app.js?v=playlist-debug-panel-2"></script>
 </body>
 </html>

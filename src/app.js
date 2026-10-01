@@ -6,6 +6,17 @@ import { initUI } from './ui/ui.js';
 import { registerServiceWorker } from './pwa.js?v=safe-update-1';
 import { initializeStorage, saveTrack, restoreTracks, deleteTrackFromStorage, getStorageError, updateTrackInStorage, savePlaylistToStorage, getAllPlaylistsFromStorage, getPlaylistFromStorage, deletePlaylistFromStorage, saveSettingValue, loadSettingValue } from './storage/libraryStorage.js?v=offline-1';
 
+const playlistDebugEnabled = new URLSearchParams(window.location.search).get('debug') === 'playlist';
+const playlistDebugData = {
+  pageUrl: window.location.href,
+  playlistsFromIndexedDB: [],
+  libraryTracks: [],
+  currentPlaylist: null,
+  lastAddToPlaylist: null,
+  lastRendererTrackIds: [],
+  diagnosticError: '',
+};
+
 const state = {
   tracks: [],
   currentTrackIndex: -1,
@@ -54,7 +65,13 @@ const root = {
   queuePanel: document.getElementById('queuePanel'),
   queueList: document.getElementById('queueList'),
   clearQueueBtn: document.getElementById('clearQueueBtn'),
+  playlistDiagnosticPanel: document.getElementById('playlistDiagnosticPanel'),
+  playlistDiagnosticOutput: document.getElementById('playlistDiagnosticOutput'),
+  playlistDiagnosticCopyBtn: document.getElementById('copyPlaylistDiagnosticBtn'),
+  playlistDiagnosticCopyStatus: document.getElementById('playlistDiagnosticCopyStatus'),
 };
+
+root.playlistDiagnosticPanel.hidden = !playlistDebugEnabled;
 
 const audioElement = document.getElementById('audio');
 const audioEngine = buildAudioEngine(audioElement);
@@ -71,6 +88,68 @@ const mediaSession = bindMediaSession({
 
 function refreshTrackCount() {
   root.trackCount.textContent = String(state.tracks.length);
+}
+
+function renderPlaylistDiagnosticData() {
+  if (!playlistDebugEnabled) return;
+  root.playlistDiagnosticOutput.textContent = JSON.stringify(playlistDebugData, null, 2);
+}
+
+async function refreshPlaylistDiagnosticData(rendererTracks = null) {
+  if (!playlistDebugEnabled) return;
+
+  try {
+    const persistedPlaylists = await getAllPlaylistsFromStorage();
+    playlistDebugData.playlistsFromIndexedDB = persistedPlaylists.map(playlist => ({
+      id: playlist.id,
+      idType: typeof playlist.id,
+      name: playlist.name,
+      trackIds: playlist.trackIds,
+      trackIdsTypes: Array.isArray(playlist.trackIds) ? playlist.trackIds.map(id => typeof id) : typeof playlist.trackIds,
+    }));
+    playlistDebugData.libraryTracks = state.tracks.map(track => ({
+      id: track.id,
+      idType: typeof track.id,
+      title: track.title || 'Untitled Track',
+    }));
+
+    const currentPlaylistInState = state.activeView === 'playlist'
+      ? state.playlists.find(playlist => playlist.id === state.activePlaylistId) || null
+      : null;
+    const currentPlaylistInDatabase = state.activeView === 'playlist'
+      ? persistedPlaylists.find(playlist => playlist.id === state.activePlaylistId) || null
+      : null;
+    if (currentPlaylistInState || currentPlaylistInDatabase) {
+      const filterPlaylist = currentPlaylistInState || currentPlaylistInDatabase;
+      const trackIds = filterPlaylist.trackIds || [];
+      const idSet = new Set(trackIds);
+      const matchedTracks = state.tracks.filter(track => idSet.has(track.id));
+      playlistDebugData.currentPlaylist = {
+        activeView: state.activeView,
+        activePlaylistId: state.activePlaylistId,
+        activePlaylistIdType: typeof state.activePlaylistId,
+        playlistObjectInAppState: currentPlaylistInState,
+        playlistObjectReadFromIndexedDB: currentPlaylistInDatabase,
+        id: filterPlaylist.id,
+        idType: typeof filterPlaylist.id,
+        name: filterPlaylist.name,
+        trackIds: filterPlaylist.trackIds,
+        trackIdsTypes: Array.isArray(filterPlaylist.trackIds) ? filterPlaylist.trackIds.map(id => typeof id) : typeof filterPlaylist.trackIds,
+        filterTrackIds: trackIds,
+        matchedTracks: matchedTracks.map(track => ({ id: track.id, title: track.title || 'Untitled Track' })),
+      };
+    } else {
+      playlistDebugData.currentPlaylist = null;
+    }
+
+    if (rendererTracks) {
+      playlistDebugData.lastRendererTrackIds = rendererTracks.map(track => track.id);
+    }
+    playlistDebugData.diagnosticError = '';
+  } catch (error) {
+    playlistDebugData.diagnosticError = error?.message || String(error);
+  }
+  renderPlaylistDiagnosticData();
 }
 
 function applySort(filtered) {
@@ -99,16 +178,19 @@ function refreshLibraryDisplay() {
 
   if (state.activeView === 'playlists') {
     renderPlaylistPicker();
+    void refreshPlaylistDiagnosticData([]);
     return;
   }
 
   if (state.activeView === 'artists') {
     renderArtists();
+    void refreshPlaylistDiagnosticData([]);
     return;
   }
 
   if (state.activeView === 'albums') {
     renderAlbums();
+    void refreshPlaylistDiagnosticData([]);
     return;
   }
 
@@ -145,6 +227,7 @@ function refreshLibraryDisplay() {
   renderLibrary(sorted, state.tracks, state.currentTrackIndex, playTrack, removeTrackAction, toggleFavorite, addTrackToQueue, openContextPlaylist, removeTrackLabel);
   root.emptyState.style.display = sorted.length === 0 ? 'flex' : 'none';
   root.trackList.style.display = sorted.length === 0 ? 'none' : 'grid';
+  void refreshPlaylistDiagnosticData(sorted);
 }
 
 function renderArtists() {
@@ -494,6 +577,20 @@ function openContextPlaylist(trackId) {
 async function saveTrackToPlaylist(trackId, playlistId) {
   const track = state.tracks.find(item => item.id === trackId);
   const playlist = state.playlists.find(item => item.id === playlistId);
+  if (playlistDebugEnabled) {
+    playlistDebugData.lastAddToPlaylist = {
+      selectedPlaylistId: playlistId,
+      selectedPlaylistIdType: typeof playlistId,
+      selectedTrackId: trackId,
+      selectedTrackIdType: typeof trackId,
+      playlistObjectBefore: playlist ? JSON.parse(JSON.stringify(playlist)) : null,
+      playlistObjectImmediatelyAfterOperation: null,
+      valueWrittenToIndexedDB: null,
+      playlistObjectReadBack: null,
+      error: !playlist || !track ? 'Selected playlist or track was not found in app state.' : '',
+    };
+    renderPlaylistDiagnosticData();
+  }
   if (!track || !playlist) throw new Error('The selected track or playlist is no longer available.');
 
   const existingTrackIds = Array.isArray(playlist.trackIds) ? playlist.trackIds : [];
@@ -507,8 +604,43 @@ async function saveTrackToPlaylist(trackId, playlistId) {
     trackIds: [...existingTrackIds, track.id],
     updatedAt: Date.now(),
   };
-  await savePlaylistToStorage(updatedPlaylist);
-  const persistedPlaylist = await getPlaylistFromStorage(updatedPlaylist.id);
+
+  if (playlistDebugEnabled) {
+    playlistDebugData.lastAddToPlaylist = {
+      selectedPlaylistId: playlist.id,
+      selectedPlaylistIdType: typeof playlist.id,
+      selectedTrackId: track.id,
+      selectedTrackIdType: typeof track.id,
+      playlistObjectBefore: JSON.parse(JSON.stringify(playlist)),
+      playlistObjectImmediatelyAfterOperation: JSON.parse(JSON.stringify(updatedPlaylist)),
+      valueWrittenToIndexedDB: {
+        objectStore: 'playlists',
+        key: updatedPlaylist.id,
+        value: JSON.parse(JSON.stringify(updatedPlaylist)),
+      },
+      playlistObjectReadBack: null,
+      error: '',
+    };
+    renderPlaylistDiagnosticData();
+  }
+
+  let persistedPlaylist;
+  try {
+    await savePlaylistToStorage(updatedPlaylist);
+    persistedPlaylist = await getPlaylistFromStorage(updatedPlaylist.id);
+  } catch (error) {
+    if (playlistDebugEnabled) {
+      playlistDebugData.lastAddToPlaylist.error = error?.message || String(error);
+      renderPlaylistDiagnosticData();
+    }
+    throw error;
+  }
+  if (playlistDebugEnabled) {
+    playlistDebugData.lastAddToPlaylist.playlistObjectReadBack = persistedPlaylist
+      ? JSON.parse(JSON.stringify(persistedPlaylist))
+      : null;
+    renderPlaylistDiagnosticData();
+  }
   if (!persistedPlaylist?.trackIds?.includes(track.id)) {
     throw new Error('Playlist-track association was not persisted.');
   }
@@ -654,6 +786,7 @@ async function addPlaylist(name) {
   state.playlists.push(savedPlaylist);
   renderPlaylists();
   if (state.activeView === 'playlists') renderPlaylistPicker();
+  if (playlistDebugEnabled) await refreshPlaylistDiagnosticData();
   return true;
 }
 
@@ -667,6 +800,29 @@ root.createPlaylistNav.addEventListener('click', openPlaylistDialog);
 root.mobileCreatePlaylistNav.addEventListener('click', openPlaylistDialog);
 root.cancelPlaylistBtn.addEventListener('click', () => root.playlistDialog.close());
 root.backToPlaylistsBtn.addEventListener('click', showPlaylistPicker);
+root.playlistDiagnosticCopyBtn.addEventListener('click', async () => {
+  if (!playlistDebugEnabled) return;
+  const text = JSON.stringify(playlistDebugData, null, 2);
+  let copied = false;
+  try {
+    if (navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(text);
+      copied = true;
+    }
+  } catch (_error) { }
+
+  if (!copied) {
+    const textarea = document.createElement('textarea');
+    textarea.value = text;
+    textarea.style.position = 'fixed';
+    textarea.style.opacity = '0';
+    document.body.appendChild(textarea);
+    textarea.select();
+    try { copied = document.execCommand('copy'); } catch (_error) { }
+    textarea.remove();
+  }
+  root.playlistDiagnosticCopyStatus.textContent = copied ? 'Debug data copied.' : 'Copy failed; select and copy the JSON below.';
+});
 root.cancelAddToPlaylistBtn.addEventListener('click', () => {
   pendingPlaylistTrackId = '';
   root.addTrackToPlaylistDialog.close();
@@ -714,6 +870,7 @@ function deletePlaylist(id) {
     root.libraryTitle.textContent = 'All Music';
   }
   renderPlaylists();
+  if (playlistDebugEnabled) void refreshPlaylistDiagnosticData();
   refreshLibraryDisplay();
 }
 
@@ -855,6 +1012,7 @@ async function boot() {
       refreshTrackCount();
       refreshLibraryDisplay();
     }
+    await refreshPlaylistDiagnosticData();
   } catch (e) {
     showStorageStatus('Unable to restore library');
   }
