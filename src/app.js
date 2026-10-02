@@ -335,6 +335,7 @@ async function importFiles(fileList) {
 
   let imported = 0;
   let failed = 0;
+  let duplicates = 0;
   const importedTracks = [];
 
   for (const file of files) {
@@ -344,11 +345,19 @@ async function importFiles(fileList) {
     }
 
     try {
-      const track = await saveTrack(file);
-      if (!track || !track.id) {
-        failed += 1;
-        continue;
-      }
+  const fileTitle = file.name.replace(/\.[^/.]+$/, '').trim().toLowerCase();
+
+  const duplicate = state.tracks.some(track =>
+    (track.title || '').trim().toLowerCase() === fileTitle &&
+    Number(track.fileSize) === Number(file.size)
+  );
+
+  if (duplicate) {
+    duplicates += 1;
+    continue;
+  }
+
+  const track = await saveTrack(file);
 
       track.artwork = '';
       track.album = track.album || 'Unknown Album';
@@ -375,9 +384,11 @@ async function importFiles(fileList) {
     updatePlayerDetails();
   }
 
-  if (imported > 0 || failed > 0) {
-    showStorageStatus(imported > 0 ? `${imported} imported${failed ? `, ${failed} failed` : ''}` : `${failed} import failed`);
-  }
+  if (imported > 0 || failed > 0 || duplicates > 0) {
+  showStorageStatus(
+    `${imported} imported${duplicates ? `, ${duplicates} duplicate skipped` : ''}${failed ? `, ${failed} failed` : ''}`
+  );
+}
 
   refreshTrackCount();
   refreshLibraryDisplay();
@@ -688,7 +699,9 @@ async function saveTrackToPlaylist(trackId, playlistId, options = {}) {
   }
   if (!track || !playlist) throw new Error('The selected track or playlist is no longer available.');
 
-  const existingTrackIds = Array.isArray(playlist.trackIds) ? playlist.trackIds : [];
+  const existingTrackIds = Array.isArray(playlist.trackIds)
+  ? [...new Set(playlist.trackIds)]
+  : [];
   if (existingTrackIds.includes(track.id)) {
     if (options.showStatus !== false) showStorageStatus(`Already in ${playlist.name}`);
     return false;
@@ -945,7 +958,7 @@ root.addTrackToPlaylistDialog.addEventListener('cancel', event => {
 root.addTrackToPlaylistForm.addEventListener('submit', async event => {
   event.preventDefault();
   const playlistId = root.targetPlaylistSelect.value;
-  const trackIds = [...pendingPlaylistTrackIds];
+  const trackIds = [...new Set(pendingPlaylistTrackIds)];
   if (!trackIds.length || !playlistId) return;
   const importChoice = Boolean(pendingImportPlaylistChoice);
   const bulkSelection = state.trackSelectionMode;
