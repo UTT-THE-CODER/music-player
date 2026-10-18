@@ -337,6 +337,7 @@ async function importFiles(fileList) {
   let failed = 0;
   let duplicates = 0;
   const importedTracks = [];
+  const playlistCandidateTrackIds = [];
 
   for (const file of files) {
     if (!file || !file.name || !/\.(mp3|wav|m4a|aac|ogg|oga|flac)$/i.test(file.name)) {
@@ -345,19 +346,29 @@ async function importFiles(fileList) {
     }
 
     try {
-  const fileTitle = file.name.replace(/\.[^/.]+$/, '').trim().toLowerCase();
+      const fileTitle = file.name.replace(/\.[^/.]+$/, '').trim().toLowerCase();
 
-  const duplicate = state.tracks.some(track =>
-    (track.title || '').trim().toLowerCase() === fileTitle &&
-    Number(track.fileSize) === Number(file.size)
-  );
+      const duplicate = state.tracks.some(track =>
+        (track.title || '').trim().toLowerCase() === fileTitle &&
+        Number(track.fileSize) === Number(file.size)
+      );
 
-  if (duplicate) {
-    duplicates += 1;
-    continue;
-  }
+      if (duplicate) {
+        duplicates += 1;
 
-  const track = await saveTrack(file);
+        const existingTrack = state.tracks.find(track =>
+          (track.title || '').trim().toLowerCase() === fileTitle &&
+          Number(track.fileSize) === Number(file.size)
+        );
+
+        if (existingTrack) {
+          playlistCandidateTrackIds.push(existingTrack.id);
+        }
+
+        continue;
+      }
+
+      const track = await saveTrack(file);
 
       track.artwork = '';
       track.album = track.album || 'Unknown Album';
@@ -385,16 +396,17 @@ async function importFiles(fileList) {
   }
 
   if (imported > 0 || failed > 0 || duplicates > 0) {
-  showStorageStatus(
-    `${imported} imported${duplicates ? `, ${duplicates} duplicate skipped` : ''}${failed ? `, ${failed} failed` : ''}`
-  );
-}
+    showStorageStatus(
+      `${imported} imported${duplicates ? `, ${duplicates} duplicate skipped` : ''}${failed ? `, ${failed} failed` : ''}`
+    );
+  }
 
   refreshTrackCount();
   refreshLibraryDisplay();
 
-  if (state.playlists.length && importedTracks.length) {
-    await requestImportedTrackPlaylistChoice(importedTracks.map(track => track.id));
+  const allCandidateIds = [...new Set([...importedTracks.map(t => t.id), ...playlistCandidateTrackIds])];
+  if (state.playlists.length && allCandidateIds.length) {
+    await requestImportedTrackPlaylistChoice(allCandidateIds);
   }
 }
 
@@ -700,8 +712,8 @@ async function saveTrackToPlaylist(trackId, playlistId, options = {}) {
   if (!track || !playlist) throw new Error('The selected track or playlist is no longer available.');
 
   const existingTrackIds = Array.isArray(playlist.trackIds)
-  ? [...new Set(playlist.trackIds)]
-  : [];
+    ? [...new Set(playlist.trackIds)]
+    : [];
   if (existingTrackIds.includes(track.id)) {
     if (options.showStatus !== false) showStorageStatus(`Already in ${playlist.name}`);
     return false;
@@ -1096,8 +1108,8 @@ root.navRows.forEach(row => {
   row.addEventListener('click', () => {
     const view = row.dataset.view;
     if (!view) return;
-      state.trackSelectionMode = false;
-      state.selectedTrackIds.clear();
+    state.trackSelectionMode = false;
+    state.selectedTrackIds.clear();
     state.activeView = view;
     state.activeArtist = '';
     state.activeAlbum = '';
